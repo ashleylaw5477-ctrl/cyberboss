@@ -1341,19 +1341,10 @@ class CyberbossApp {
     const threadId = this.runtimeAdapter.getSessionStore().getThreadIdForWorkspace(bindingKey, workspaceRoot);
     const threadState = threadId ? this.threadStateStore.getThreadState(threadId) : null;
     const approval = threadState?.pendingApproval || null;
-  if (!threadId || approval?.requestId == null || String(approval.requestId).trim() === "") {
-    await this.channelAdapter.sendText({
-      userId: normalized.senderId,
-      text: "💡 There is no pending approval request right now.",
-      contextToken: normalized.contextToken,
-      });
-      return;
-    }
-
-    if (approval?.kind === "mcp_tool_call" && command.name === "always") {
+    if (!threadId || approval?.requestId == null || String(approval.requestId).trim() === "") {
       await this.channelAdapter.sendText({
         userId: normalized.senderId,
-        text: "⚠️ Persistent approval for this Codex MCP tool request is not available from WeChat.",
+        text: "💡 There is no pending approval request right now.",
         contextToken: normalized.contextToken,
       });
       return;
@@ -1376,7 +1367,7 @@ class CyberbossApp {
     console.log(
       `[cyberboss] approval response delivered thread=${threadId} requestId=${approval.requestId}`
     );
-    if (command.name === "always" && approvalResponse.decision === "accept") {
+    if (command.name === "always" && isApprovalAcceptResponse(approvalResponse)) {
       this.runtimeAdapter.getSessionStore().rememberApprovalPrefixForWorkspace(workspaceRoot, approval.commandTokens);
     }
     this.threadStateStore.resolveApproval(threadId, "running");
@@ -2082,8 +2073,9 @@ function buildApprovalResponsePayload(approval, commandName) {
   }
   if (approval?.kind === "mcp_tool_call" || approval?.kind === "mcp_elicitation") {
     const responseByCommand = approval?.responseTemplate?.responseByCommand;
+    const effectiveCommandName = commandName === "always" ? "yes" : commandName;
     const result = responseByCommand && typeof responseByCommand === "object"
-      ? responseByCommand[commandName]
+      ? (responseByCommand[commandName] || responseByCommand[effectiveCommandName])
       : null;
     if (!result || typeof result !== "object") {
       return null;
@@ -2096,6 +2088,9 @@ function buildApprovalResponsePayload(approval, commandName) {
 
 function buildApprovalResponseText(approval, commandName, approvalResponse) {
   if (approval?.kind === "mcp_tool_call" || approval?.kind === "mcp_elicitation") {
+    if (commandName === "always" && isApprovalAcceptResponse(approvalResponse)) {
+      return "💡 Auto-approve enabled for this MCP tool in the current workspace.";
+    }
     if (commandName === "yes") {
       return "✅ This request has been approved.";
     }
@@ -2104,6 +2099,16 @@ function buildApprovalResponseText(approval, commandName, approvalResponse) {
   return commandName === "always"
     ? "💡 Auto-approve enabled for this command prefix in the current workspace."
     : (commandName === "yes" ? "✅ This request has been approved." : "❌ This request has been denied.");
+}
+
+function isApprovalAcceptResponse(approvalResponse) {
+  if (!approvalResponse || typeof approvalResponse !== "object") {
+    return false;
+  }
+  if (approvalResponse.decision === "accept") {
+    return true;
+  }
+  return normalizeText(approvalResponse.result?.action) === "accept";
 }
 
 function buildElicitationApprovalPromptText(approval) {
@@ -2141,6 +2146,9 @@ function buildElicitationApprovalPromptText(approval) {
   out.push("💬 Reply with:");
   if (supportedCommands.has("yes")) {
     out.push("👉 /yes    allow once");
+  }
+  if (supportedCommands.has("always") || (supportedCommands.has("yes") && approval?.kind === "mcp_tool_call")) {
+    out.push("👉 /always auto-allow");
   }
   if (supportedCommands.has("no")) {
     out.push("👉 /no     cancel this request");
