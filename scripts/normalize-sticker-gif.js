@@ -5,6 +5,7 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 
 const SIPS_PATH = "/usr/bin/sips";
+const CONVERT_PATH = "/usr/bin/convert";
 const DEFAULT_SIZE = 240;
 
 function main() {
@@ -29,22 +30,29 @@ function main() {
     return;
   }
 
-  if (process.platform !== "darwin") {
-    throw new Error("Sticker GIF normalization for non-GIF inputs currently requires macOS `sips`.");
-  }
+const normalizedSize = Number.isInteger(size) && size > 0 ? size : DEFAULT_SIZE;
+let result;
+
+if (process.platform === "darwin") {
   if (!fs.existsSync(SIPS_PATH)) {
     throw new Error(`Required tool missing: ${SIPS_PATH}`);
   }
-
-  const normalizedSize = Number.isInteger(size) && size > 0 ? size : DEFAULT_SIZE;
-  const result = spawnSync(SIPS_PATH, [
+  result = spawnSync(SIPS_PATH, [
     "-s", "format", "gif",
     "-z", String(normalizedSize), String(normalizedSize),
     resolvedInputPath,
     "--out", resolvedOutputPath,
-  ], {
-    encoding: "utf8",
-  });
+  ], { encoding: "utf8" });
+} else {
+  if (!fs.existsSync(CONVERT_PATH)) {
+    throw new Error(`Required tool missing: ${CONVERT_PATH}`);
+  }
+  result = spawnSync(CONVERT_PATH, [
+    resolvedInputPath,
+    "-resize", `${normalizedSize}x${normalizedSize}`,
+    resolvedOutputPath,
+  ], { encoding: "utf8" });
+}
 
   if (result.status !== 0) {
     const stderr = String(result.stderr || "").trim();
