@@ -1,15 +1,22 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 
 const { CyberbossApp } = require("../src/core/app");
 const { mapCodexMessageToRuntimeEvent } = require("../src/adapters/runtime/codex/events");
-const { buildCodexMcpConfigArgs } = require("../src/adapters/runtime/codex/mcp-config");
+const {
+  buildCodexMcpConfigArgs,
+  resolveCodexProjectToolMcpServerConfig,
+} = require("../src/adapters/runtime/codex/mcp-config");
 
 test("codex MCP config auto-approves cyberboss tools", () => {
   const args = buildCodexMcpConfigArgs({
     name: "cyberboss_tools",
     command: "/usr/bin/node",
     args: ["/workspace/bin/cyberboss.js", "tool-mcp-server"],
+    env: { CYBERBOSS_STATE_DIR: "/tmp/cyberboss-state" },
   });
 
   assert.deepEqual(args.slice(0, 4), [
@@ -18,6 +25,10 @@ test("codex MCP config auto-approves cyberboss tools", () => {
     "-c",
     "mcp_servers.cyberboss_tools.args=[\"/workspace/bin/cyberboss.js\",\"tool-mcp-server\"]",
   ]);
+  assert.match(
+    args.join("\n"),
+    /mcp_servers\.cyberboss_tools\.env\.CYBERBOSS_STATE_DIR="\/tmp\/cyberboss-state"/
+  );
   assert.match(
     args.join("\n"),
     /mcp_servers\.cyberboss_tools\.tools\.cyberboss_channel_send_file\.approval_mode="auto"/
@@ -34,6 +45,21 @@ test("codex MCP config auto-approves cyberboss tools", () => {
     args.join("\n"),
     /mcp_servers\.cyberboss_tools\.tools\.whereabouts_snapshot\.approval_mode="auto"/
   );
+});
+
+test("codex project tool MCP config carries the current state directory", () => {
+  const cyberbossHome = fs.mkdtempSync(path.join(os.tmpdir(), "cyberboss-codex-mcp-"));
+  fs.mkdirSync(path.join(cyberbossHome, "bin"));
+  fs.writeFileSync(path.join(cyberbossHome, "bin", "cyberboss.js"), "");
+
+  const config = resolveCodexProjectToolMcpServerConfig({
+    cyberbossHome,
+    env: { CYBERBOSS_STATE_DIR: "/tmp/current-cyberboss-state" },
+  });
+
+  assert.deepEqual(config.env, {
+    CYBERBOSS_STATE_DIR: "/tmp/current-cyberboss-state",
+  });
 });
 
 test("codex MCP elicitation approvals map to runtime approval events", () => {

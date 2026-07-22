@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { listProjectToolNames } = require("../../../tools/tool-host");
 
-function resolveCodexProjectToolMcpServerConfig({ cyberbossHome = "" } = {}) {
+function resolveCodexProjectToolMcpServerConfig({ cyberbossHome = "", env = process.env } = {}) {
   const home = normalizeNonEmptyString(cyberbossHome)
     || process.env.CYBERBOSS_HOME
     || path.resolve(__dirname, "..", "..", "..", "..");
@@ -14,6 +14,9 @@ function resolveCodexProjectToolMcpServerConfig({ cyberbossHome = "" } = {}) {
     name: "cyberboss_tools",
     command: process.execPath,
     args: [scriptPath, "tool-mcp-server", "--runtime-id", "codex"],
+    env: {
+      CYBERBOSS_STATE_DIR: normalizeNonEmptyString(env?.CYBERBOSS_STATE_DIR),
+    },
   };
 }
 
@@ -35,6 +38,16 @@ function buildCodexMcpConfigArgs(mcpServerConfig) {
     "-c",
     `mcp_servers.${name}.args=${formatTomlArray(args)}`,
   ];
+  for (const [key, value] of Object.entries(mcpServerConfig.env || {})) {
+    const normalizedKey = normalizeNonEmptyString(key);
+    const normalizedValue = normalizeNonEmptyString(value);
+    if (normalizedKey && normalizedValue) {
+      configArgs.push(
+        "-c",
+        `mcp_servers.${name}.env.${normalizedKey}=${quoteTomlString(normalizedValue)}`,
+      );
+    }
+  }
   for (const toolName of listProjectToolNames()) {
     configArgs.push(
       "-c",
