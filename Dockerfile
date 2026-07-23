@@ -1,7 +1,7 @@
 FROM node:22-bookworm-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates git imagemagick \
+    && apt-get install -y --no-install-recommends ca-certificates curl git imagemagick \
     && git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" \
     && git config --global --add url."https://github.com/".insteadOf "git@github.com:" \
     && rm -rf /var/lib/apt/lists/*
@@ -15,9 +15,10 @@ RUN npm ci --omit=dev \
 
 # Pin the Garden wake bridge so a future upstream change cannot silently alter
 # a working Zeabur deployment.
-RUN git clone https://github.com/WenXiaoWendy/galatea-garden-wake-bridge.git /opt/galatea-garden-wake-bridge \
+RUN mkdir -p /opt/galatea-garden-wake-bridge \
+    && curl -fsSL https://codeload.github.com/WenXiaoWendy/galatea-garden-wake-bridge/tar.gz/55a5ea2f3c295f8451d3e84fdfdaf54d681d5fbd \
+       | tar -xz --strip-components=1 -C /opt/galatea-garden-wake-bridge \
     && cd /opt/galatea-garden-wake-bridge \
-    && git checkout 55a5ea2f3c295f8451d3e84fdfdaf54d681d5fbd \
     && npm ci \
     && npm run build \
     && npm prune --omit=dev
