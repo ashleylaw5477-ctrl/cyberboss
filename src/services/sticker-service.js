@@ -21,11 +21,12 @@ const STICKER_DESC_GUIDANCE = `Prefer descs of ${MIN_STICKER_DESC_CHARS} or more
 const STICKER_DESC_FIELD_DESCRIPTION = `A concrete sticker description. ${STICKER_DESC_GUIDANCE}`;
 
 class StickerService {
-  constructor({ config, channelAdapter, sessionStore, channelFileService }) {
+  constructor({ config, channelAdapter, sessionStore, channelFileService, activityLog = null }) {
     this.config = config;
     this.channelAdapter = channelAdapter;
     this.sessionStore = sessionStore;
     this.channelFileService = channelFileService;
+    this.activityLog = activityLog;
   }
 
   async listTags() {
@@ -130,6 +131,15 @@ class StickerService {
       filePath,
       userId,
     }, context);
+    try {
+      this.activityLog?.append("sticker_send", {
+        title: "发送了一个表情包",
+        summary: normalizeText(index[normalizedStickerId]?.desc),
+        meta: { stickerId: normalizedStickerId },
+      });
+    } catch (error) {
+      console.warn(`[cyberboss] failed to record sticker activity: ${error.message}`);
+    }
     return {
       stickerId: normalizedStickerId,
       filePath,

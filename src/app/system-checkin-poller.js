@@ -5,6 +5,7 @@ const { SessionStore } = require("../adapters/runtime/codex/session-store");
 const { CheckinConfigStore, resolveDefaultCheckinRange } = require("../core/checkin-config-store");
 const { resolvePreferredSenderId, resolvePreferredWorkspaceRoot } = require("../core/default-targets");
 const { SystemMessageQueueStore } = require("../core/system-message-queue-store");
+const { ActivityLogService } = require("../services/activity-log-service");
 
 const INTERNAL_CHECKIN_TRIGGER_TEMPLATE = "%USER% comes to mind again.";
 
@@ -13,6 +14,7 @@ async function runSystemCheckinPoller(config) {
   const queue = new SystemMessageQueueStore({ filePath: config.systemMessageQueueFile });
   const checkinConfigStore = new CheckinConfigStore({ filePath: config.checkinConfigFile });
   const sessionStore = new SessionStore({ filePath: config.sessionsFile });
+  const activityLog = new ActivityLogService({ filePath: config.activityLogFile });
   const target = resolvePollerTarget({ config, account, sessionStore });
   const defaultRange = resolveDefaultCheckinRange();
   let currentRange = checkinConfigStore.getRange(defaultRange);
@@ -40,6 +42,17 @@ async function runSystemCheckinPoller(config) {
       text: buildCheckinTrigger(config),
       createdAt: new Date().toISOString(),
     });
+    try {
+      activityLog.append("checkin", {
+        id: `checkin:${queued.id}`,
+        occurredAt: queued.createdAt,
+        title: `${normalizeText(config.dashboardAgentName) || "Knox"} 又想起了 ${normalizeText(config.userName) || "你"}`,
+        summary: queued.text,
+        meta: { triggerId: queued.id },
+      });
+    } catch (error) {
+      console.warn(`[cyberboss] failed to record checkin activity: ${error.message}`);
+    }
     console.log(`[cyberboss] checkin queued id=${queued.id}`);
   }
 }

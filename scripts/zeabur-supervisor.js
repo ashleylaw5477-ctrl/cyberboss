@@ -66,9 +66,22 @@ function startGardenBridge() {
   return spawnNode([bridgeCli, "run"], { env });
 }
 
+function startDashboard() {
+  const enabled = normalizeText(process.env.CYBERBOSS_DASHBOARD_ENABLED).toLowerCase();
+  if (["0", "false", "no", "off"].includes(enabled)) {
+    console.log("[cyberboss] dashboard disabled");
+    return null;
+  }
+  console.log(`[cyberboss] starting dashboard port=${normalizeText(process.env.PORT) || "3000"}`);
+  return spawnNode([path.join(rootDir, "scripts", "dashboard-start.js")]);
+}
+
 function main() {
   const bridge = startGardenBridge();
   if (bridge) watch(bridge, "Garden wake bridge");
+
+  const dashboard = startDashboard();
+  if (dashboard) watch(dashboard, "Dashboard");
 
   const cyberboss = spawnNode([path.join(rootDir, "scripts", "shared-start.js")]);
   watch(cyberboss, "Cyberboss");

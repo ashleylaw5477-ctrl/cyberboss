@@ -3,7 +3,15 @@ const { sanitizeProtocolLeakText } = require("../adapters/runtime/codex/protocol
 const CURRENT_REPLY_HEADER = "===== 本轮模型回复 =====";
 
 class StreamDelivery {
-  constructor({ channelAdapter, sessionStore, runtimeId = "", onDeferredSystemReply, systemReplyRetryScheduleMs, sameTokenRetryDelayMs }) {
+  constructor({
+    channelAdapter,
+    sessionStore,
+    runtimeId = "",
+    onDeferredSystemReply,
+    systemReplyRetryScheduleMs,
+    sameTokenRetryDelayMs,
+    activityLog = null,
+  }) {
     this.channelAdapter = channelAdapter;
     this.sessionStore = sessionStore;
     this.runtimeId = normalizeRuntimeId(runtimeId);
@@ -15,6 +23,7 @@ class StreamDelivery {
     this.sameTokenRetryDelayMs = Number.isFinite(sameTokenRetryDelayMs) && sameTokenRetryDelayMs >= 0
       ? sameTokenRetryDelayMs
       : 800;
+    this.activityLog = activityLog;
     this.replyTargetByBindingKey = new Map();
     this.replyTargetByTurnKey = new Map();
     this.replyTargetQueueByThreadId = new Map();
@@ -326,6 +335,11 @@ class StreamDelivery {
     const resolved = resolveSystemReplyDelivery(replyText, this.systemReplyPolicy);
     if (resolved.kind === "silent") {
       this.markAllItemsSent(state);
+      this.recordSystemActivity("silent", {
+        title: "这次选择保持安静",
+        summary: "醒来确认过后，没有打扰你。",
+        meta: { threadId: state.threadId },
+      });
       console.log(
         `[cyberboss] suppressed system reply thread=${state.threadId} action=silent preview=${JSON.stringify(replyText.slice(0, 120))}`
       );
@@ -341,12 +355,25 @@ class StreamDelivery {
 
     state.sendChain = state.sendChain.then(async () => {
       await this.sendSystemReply(state, resolved.message);
+      this.recordSystemActivity("send_message", {
+        title: "主动发来一条消息",
+        summary: resolved.message,
+        meta: { threadId: state.threadId },
+      });
       this.markAllItemsSent(state);
     }).catch((error) => {
       console.error(`[cyberboss] failed to deliver system reply thread=${state.threadId}: ${error.message}`);
     });
 
     await state.sendChain;
+  }
+
+  recordSystemActivity(type, details) {
+    try {
+      this.activityLog?.append(type, details);
+    } catch (error) {
+      console.warn(`[cyberboss] failed to record ${type} activity: ${error.message}`);
+    }
   }
 
   async sendReplyDelivery(state, delivery, { prependDeferredPrefix = false } = {}) {

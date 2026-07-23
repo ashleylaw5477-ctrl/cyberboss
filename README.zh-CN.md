@@ -475,6 +475,7 @@ ${HOME}/.cyberboss
 ## 文档入口
 
 - [docs/commands.md](./docs/commands.md)
+- [Zeabur 可视化 Dashboard](./docs/dashboard.zh-CN.md)
 
 <a id="faq"></a>
 ## FAQ

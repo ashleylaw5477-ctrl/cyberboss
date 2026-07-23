@@ -4,8 +4,9 @@ const path = require("path");
 const { resolveBodyInput } = require("./text-input");
 
 class DiaryService {
-  constructor({ config }) {
+  constructor({ config, activityLog = null }) {
     this.config = config;
+    this.activityLog = activityLog;
   }
 
   async append({ text = "", textFile = "", title = "", date = "", time = "" } = {}) {
@@ -27,12 +28,26 @@ class DiaryService {
     fs.mkdirSync(this.config.diaryDir, { recursive: true });
     const prefix = fs.existsSync(filePath) && fs.statSync(filePath).size > 0 ? "\n\n" : "";
     fs.appendFileSync(filePath, `${prefix}${entry}`, "utf8");
+    this.recordActivity({
+      occurredAt: buildDiaryOccurredAt(dateString, timeString),
+      title: title || "写下了一段日记",
+      summary: body.slice(0, 240),
+      meta: { date: dateString, time: timeString },
+    });
     return {
       filePath,
       date: dateString,
       time: timeString,
       body,
     };
+  }
+
+  recordActivity(details) {
+    try {
+      this.activityLog?.append("diary_write", details);
+    } catch (error) {
+      console.warn(`[cyberboss] failed to record diary activity: ${error.message}`);
+    }
   }
 }
 
@@ -57,6 +72,11 @@ function formatTime(date) {
     minute: "2-digit",
     hour12: false,
   }).format(date);
+}
+
+function buildDiaryOccurredAt(dateString, timeString) {
+  const parsed = Date.parse(`${dateString}T${timeString}:00+08:00`);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : new Date().toISOString();
 }
 
 module.exports = {
