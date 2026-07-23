@@ -1,23 +1,21 @@
 FROM node:22-bookworm-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl git imagemagick \
-    && git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" \
-    && git config --global --add url."https://github.com/".insteadOf "git@github.com:" \
+    && apt-get install -y --no-install-recommends ca-certificates imagemagick \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY vendor ./vendor
 RUN npm ci --omit=dev \
     && npm install --global @anthropic-ai/claude-code@latest \
     && mkdir -p /data/home /data/cyberboss /data/workspace
 
-# Pin the Garden wake bridge so a future upstream change cannot silently alter
-# a working Zeabur deployment.
+# Build the vendored Garden wake bridge without depending on private upstream
+# repositories during Zeabur deployment.
 RUN mkdir -p /opt/galatea-garden-wake-bridge \
-    && curl -fsSL https://codeload.github.com/WenXiaoWendy/galatea-garden-wake-bridge/tar.gz/55a5ea2f3c295f8451d3e84fdfdaf54d681d5fbd \
-       | tar -xz --strip-components=1 -C /opt/galatea-garden-wake-bridge \
+    && cp -a /app/vendor/galatea-garden-wake-bridge/. /opt/galatea-garden-wake-bridge/ \
     && cd /opt/galatea-garden-wake-bridge \
     && npm ci \
     && npm run build \
