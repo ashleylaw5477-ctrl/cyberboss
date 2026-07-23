@@ -5,5 +5,6 @@ node_modules/
 .claude/settings.json
 .claude/settings.local.json
 npm-debug.log*
+vendor/galatea-garden-wake-bridge/dist/
 third_party/
 firmware/
