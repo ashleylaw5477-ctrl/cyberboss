@@ -15,9 +15,10 @@ const DELAY_UNIT_MS = {
 const LOCAL_TIMEZONE_OFFSET = "+08:00";
 
 class ReminderService {
-  constructor({ config, sessionStore }) {
+  constructor({ config, sessionStore, activityLog = null }) {
     this.config = config;
     this.sessionStore = sessionStore;
+    this.activityLog = activityLog;
     this.queue = new ReminderQueueStore({ filePath: config.reminderQueueFile });
   }
 
@@ -67,6 +68,20 @@ class ReminderService {
       dueAtMs,
       createdAt: new Date().toISOString(),
     });
+    try {
+      this.activityLog?.append("reminder", {
+        occurredAt: reminder.createdAt,
+        title: "安排了一条提醒",
+        summary: body.slice(0, 240),
+        meta: {
+          reminderId: reminder.id,
+          dueAt: new Date(reminder.dueAtMs).toISOString(),
+          status: "scheduled",
+        },
+      });
+    } catch (error) {
+      console.warn(`[cyberboss] failed to record reminder activity: ${error.message}`);
+    }
     return reminder;
   }
 }

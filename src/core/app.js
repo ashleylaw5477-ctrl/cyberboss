@@ -86,6 +86,7 @@ class CyberbossApp {
       channelAdapter: this.channelAdapter,
       sessionStore: this.runtimeAdapter.getSessionStore(),
       runtimeId: this.runtimeAdapter.describe().id,
+      activityLog: this.projectServices.activity,
       onDeferredSystemReply: (payload) => this.deferSystemReply(payload),
     });
     this.pendingOperationByRunKey = new Map();

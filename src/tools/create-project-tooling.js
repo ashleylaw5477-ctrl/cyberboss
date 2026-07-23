@@ -2,6 +2,7 @@ const { createWeixinChannelAdapter } = require("../adapters/channel/weixin");
 const { SessionStore } = require("../adapters/runtime/codex/session-store");
 const { createTimelineIntegration } = require("../integrations/timeline");
 const { ChannelFileService } = require("../services/channel-file-service");
+const { ActivityLogService } = require("../services/activity-log-service");
 const { DiaryService } = require("../services/diary-service");
 const { ReminderService } = require("../services/reminder-service");
 const { StickerService } = require("../services/sticker-service");
@@ -21,13 +22,23 @@ function createProjectTooling(config, options = {}) {
   const runtimeContextStore = options.runtimeContextStore || new RuntimeContextStore({
     filePath: config.projectToolContextFile,
   });
+  const activity = options.activityLog || new ActivityLogService({
+    filePath: config.activityLogFile,
+  });
   const channelFile = new ChannelFileService({ config, channelAdapter, sessionStore });
   const services = {
-    diary: new DiaryService({ config }),
-    reminder: new ReminderService({ config, sessionStore }),
+    activity,
+    diary: new DiaryService({ config, activityLog: activity }),
+    reminder: new ReminderService({ config, sessionStore, activityLog: activity }),
     system: new SystemMessageService({ config, sessionStore }),
     channelFile,
-    sticker: new StickerService({ config, channelAdapter, sessionStore, channelFileService: channelFile }),
+    sticker: new StickerService({
+      config,
+      channelAdapter,
+      sessionStore,
+      channelFileService: channelFile,
+      activityLog: activity,
+    }),
     timeline: new TimelineService({ config, timelineIntegration, sessionStore }),
     whereabouts: new WhereaboutsService({
       config: {
