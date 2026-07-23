@@ -11,6 +11,15 @@ RUN npm ci --omit=dev \
     && npm install --global @anthropic-ai/claude-code@latest \
     && mkdir -p /data/home /data/cyberboss /data/workspace
 
+# Pin the Garden wake bridge so a future upstream change cannot silently alter
+# a working Zeabur deployment.
+RUN git clone https://github.com/WenXiaoWendy/galatea-garden-wake-bridge.git /opt/galatea-garden-wake-bridge \
+    && cd /opt/galatea-garden-wake-bridge \
+    && git checkout 55a5ea2f3c295f8451d3e84fdfdaf54d681d5fbd \
+    && npm ci \
+    && npm run build \
+    && npm prune --omit=dev
+
 COPY . .
 COPY zeabur-entrypoint.sh /usr/local/bin/zeabur-entrypoint
 RUN chmod +x /usr/local/bin/zeabur-entrypoint
