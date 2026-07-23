@@ -27,8 +27,8 @@
   "dependencies": {
     "dotenv": "^16.4.7",
     "qrcode-terminal": "0.12.0",
-    "timeline-for-agent": "https://codeload.github.com/WenXiaoWendy/timeline-for-agent/tar.gz/62e1fa8db26f7a9147ad96579fc4077a39b94c8b",
-    "whereabouts-mcp": "https://codeload.github.com/WenXiaoWendy/whereabouts-mcp/tar.gz/e36cb307f082f747327fd3a5d406fd9718a1428d",
+    "timeline-for-agent": "file:vendor/timeline-for-agent",
+    "whereabouts-mcp": "file:vendor/whereabouts-mcp",
     "ws": "^8.19.0"
   }
 }
