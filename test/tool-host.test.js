@@ -11,6 +11,20 @@ function createHost() {
           return { filePath: "/tmp/diary.md", ...args };
         },
       },
+      note: {
+        async create(args) {
+          return { id: "note_test_abcdef123456", ...args };
+        },
+        async update(args) {
+          return { ...args };
+        },
+        async list() {
+          return [{ id: "note_test_abcdef123456", title: "Test note" }];
+        },
+        async get(args) {
+          return { ...args, title: "Test note", body: "Body" };
+        },
+      },
       reminder: {
         async create(args) {
           return { id: "reminder-1", ...args };
@@ -230,6 +244,34 @@ test("tool host validates structured reminder input types", async () => {
       delayMinutes: "30",
     }, {});
   }, /input\.delayMinutes must be an integer/);
+});
+
+test("tool host exposes note tools without accepting file paths", async () => {
+  const host = createHost();
+  const created = await host.invokeTool("cyberboss_note_create", {
+    title: "Ally 的斗地主课",
+    body: "正文",
+    category: "游戏课",
+    tags: ["斗地主"],
+  });
+  const listed = await host.invokeTool("cyberboss_note_list", { tag: "斗地主" });
+  const loaded = await host.invokeTool("cyberboss_note_get", { id: created.data.id });
+  const updated = await host.invokeTool("cyberboss_note_update", {
+    id: created.data.id,
+    body: "修正后的正文",
+  });
+
+  assert.equal(created.text, "Note created: note_test_abcdef123456");
+  assert.equal(listed.text, "Notes loaded: 1.");
+  assert.equal(loaded.data.title, "Test note");
+  assert.equal(updated.text, "Note updated: note_test_abcdef123456");
+  await assert.rejects(
+    host.invokeTool("cyberboss_note_get", {
+      id: created.data.id,
+      filePath: "/data/cyberboss/sessions.json",
+    }),
+    /input\.filePath is not allowed/
+  );
 });
 
 test("tool host exposes sticker tools with compact structured outputs", async () => {

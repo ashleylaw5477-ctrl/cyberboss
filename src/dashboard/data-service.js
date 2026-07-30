@@ -3,6 +3,7 @@ const path = require("path");
 
 const { resolveDefaultCheckinRange } = require("../core/checkin-config-store");
 const { ActivityLogService } = require("../services/activity-log-service");
+const { NoteService } = require("../services/note-service");
 const {
   StickerService,
   loadStickerIndexSync,
@@ -14,7 +15,7 @@ const DIARY_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const STICKER_ID_PATTERN = /^stk_\d+$/i;
 
 class DashboardDataService {
-  constructor({ config, activityLog = null, stickerService = null } = {}) {
+  constructor({ config, activityLog = null, stickerService = null, noteService = null } = {}) {
     this.config = config;
     this.activityLog = activityLog || new ActivityLogService({
       filePath: config.activityLogFile,
@@ -26,6 +27,7 @@ class DashboardDataService {
       channelFileService: null,
       activityLog: this.activityLog,
     });
+    this.noteService = noteService || new NoteService({ config });
   }
 
   getOverview() {
@@ -131,6 +133,38 @@ class DashboardDataService {
       markdown,
       entries: parseDiaryEntries(selectedDate, markdown),
     };
+  }
+
+  async getDesk() {
+    const notes = await this.noteService.list();
+    const latestDiaryDate = this.listDiaryDates()[0] || "";
+    const latestDiary = latestDiaryDate ? this.getDiary(latestDiaryDate) : null;
+    return {
+      latestNote: notes[0] || null,
+      latestDiary: latestDiary ? {
+        date: latestDiary.date,
+        entryCount: latestDiary.entries.length,
+        title: latestDiary.entries[0]?.title || "这一天的记录",
+        summary: stripMarkdown(latestDiary.entries[0]?.body || "").slice(0, 180),
+      } : null,
+      counts: {
+        notes: notes.length,
+        diaryDays: this.listDiaryDates().length,
+      },
+    };
+  }
+
+  async getNotes(filters = {}) {
+    const items = await this.noteService.list(filters);
+    return {
+      items,
+      categories: [...new Set(items.map((item) => item.category).filter(Boolean))].sort(),
+      tags: [...new Set(items.flatMap((item) => item.tags))].sort(),
+    };
+  }
+
+  async getNote(id) {
+    return this.noteService.get({ id });
   }
 
   getActivities({ type = "", limit = 200 } = {}) {

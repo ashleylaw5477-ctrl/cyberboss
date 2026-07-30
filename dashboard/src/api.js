@@ -41,7 +41,10 @@ export const dashboardApi = {
   login: (password) => apiRequest("/api/login", { method: "POST", body: { password } }),
   logout: () => apiRequest("/api/logout", { method: "POST", body: {} }),
   overview: () => apiRequest("/api/overview"),
+  desk: () => apiRequest("/api/desk"),
   diary: (date = "") => apiRequest(`/api/diary${date ? `?date=${encodeURIComponent(date)}` : ""}`),
+  notes: () => apiRequest("/api/notes"),
+  note: (id) => apiRequest(`/api/notes/${encodeURIComponent(id)}`),
   activity: (type = "") => apiRequest(`/api/activity${type ? `?type=${encodeURIComponent(type)}` : ""}`),
   stickers: () => apiRequest("/api/stickers"),
   updateSticker: (stickerId, value) => apiRequest(`/api/stickers/${encodeURIComponent(stickerId)}`, {

@@ -6,6 +6,7 @@ const test = require("node:test");
 
 const { DashboardDataService, parseDiaryEntries } = require("../src/dashboard/data-service");
 const { ActivityLogService } = require("../src/services/activity-log-service");
+const { NoteService } = require("../src/services/note-service");
 
 test("dashboard diary keeps the original markdown and parses entry headings", () => {
   const entries = parseDiaryEntries("2026-07-23", [
@@ -103,6 +104,41 @@ test("activity log ignores corrupt lines and returns newest entries first", (t) 
   assert.deepEqual(activityLog.list().map((item) => item.id), ["newer", "older"]);
 });
 
+test("dashboard desk exposes only diary summaries and note metadata/body", async (t) => {
+  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "cyberboss-dashboard-desk-"));
+  t.after(() => fs.rmSync(stateDir, { recursive: true, force: true }));
+  const config = createTestConfig(stateDir);
+  fs.mkdirSync(config.diaryDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(config.diaryDir, "2026-07-29.md"),
+    "## 22:10 今天\n\n写下第一篇笔记的备份。",
+    "utf8"
+  );
+  const noteService = new NoteService({ config });
+  const note = await noteService.create({
+    title: "Ally 的斗地主课",
+    body: "牌权、剩余牌地图与隐藏终局组合。",
+    category: "游戏课",
+    tags: ["斗地主", "全局观", "算牌"],
+    summary: "一篇斗地主课程笔记。",
+  });
+  const service = new DashboardDataService({ config, noteService });
+
+  const desk = await service.getDesk();
+  assert.equal(desk.latestNote.id, note.id);
+  assert.equal(desk.latestDiary.date, "2026-07-29");
+  assert.equal(desk.latestDiary.entryCount, 1);
+  assert.equal(JSON.stringify(desk).includes(note.body), false);
+
+  const list = await service.getNotes();
+  assert.deepEqual(list.categories, ["游戏课"]);
+  assert.deepEqual(list.tags, ["全局观", "斗地主", "算牌"]);
+  assert.equal("body" in list.items[0], false);
+
+  const loaded = await service.getNote(note.id);
+  assert.equal(loaded.body, note.body);
+});
+
 function createTestConfig(stateDir) {
   return {
     stateDir,
@@ -114,6 +150,7 @@ function createTestConfig(stateDir) {
     accountId: "",
     dashboardAgentName: "Knox",
     diaryDir: path.join(stateDir, "diary"),
+    notesDir: path.join(stateDir, "notes"),
     activityLogFile: path.join(stateDir, "activity-log.jsonl"),
     sessionsFile: path.join(stateDir, "sessions.json"),
     reminderQueueFile: path.join(stateDir, "reminder-queue.json"),

@@ -2407,6 +2407,511 @@ textarea::placeholder {
   }
 }
 
+.sidebar-nav button .icon,
+.bottom-nav button .icon {
+  stroke-width: 1.65;
+}
+
+.sidebar-nav button .icon {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.sidebar-nav button.active .icon {
+  filter: drop-shadow(0 3px 6px rgba(168, 93, 104, 0.18));
+}
+
+.desk-tabs {
+  display: inline-flex;
+  gap: 0.35rem;
+  margin-bottom: 1.4rem;
+  padding: 0.38rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.38);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.65);
+}
+
+.desk-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.6rem;
+  padding: 0.68rem 1rem;
+  border: 0;
+  border-radius: 12px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.desk-tabs button:hover {
+  color: var(--text);
+}
+
+.desk-tabs button.active {
+  color: #65474a;
+  background: #ffdcbb;
+  box-shadow: 0 7px 18px rgba(144, 94, 74, 0.12);
+}
+
+.desk-tabs .icon {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.desk-overview {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.desk-intro {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1.15rem;
+  min-height: 9rem;
+  padding: 1.6rem;
+  overflow: hidden;
+  border: 1px solid rgba(113, 84, 63, 0.12);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 88% 15%, rgba(255, 210, 192, 0.82), transparent 18rem),
+    linear-gradient(135deg, rgba(243, 224, 199, 0.9), rgba(255, 248, 223, 0.92));
+  box-shadow: var(--shadow), inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.desk-intro::after {
+  position: absolute;
+  right: -2rem;
+  bottom: -4.5rem;
+  width: 15rem;
+  height: 9rem;
+  border: 1px solid rgba(168, 93, 104, 0.09);
+  border-radius: 50%;
+  content: "";
+}
+
+.desk-lamp {
+  display: grid;
+  width: 4.3rem;
+  height: 4.3rem;
+  flex: none;
+  place-items: center;
+  border: 1px solid rgba(168, 93, 104, 0.16);
+  border-radius: 1.35rem;
+  color: #87515c;
+  background: rgba(255, 220, 187, 0.72);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.78), 0 12px 25px rgba(116, 74, 61, 0.1);
+}
+
+.desk-lamp .icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.desk-intro p,
+.shelf-heading p {
+  margin: 0 0 0.35rem;
+  color: var(--rose);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
+
+.desk-intro h2,
+.shelf-heading h2 {
+  margin: 0;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: clamp(1.35rem, 3vw, 1.9rem);
+}
+
+.desk-intro div > span {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.desk-drawers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.desk-drawer {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+  min-height: 13rem;
+  padding: 1.4rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 16px 38px rgba(103, 76, 59, 0.09), inset 0 1px rgba(255, 255, 255, 0.65);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.desk-drawer:hover {
+  transform: translateY(-3px);
+  border-color: rgba(168, 93, 104, 0.22);
+  box-shadow: 0 22px 45px rgba(103, 76, 59, 0.13), inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.diary-drawer {
+  background:
+    repeating-linear-gradient(0deg, transparent 0, transparent 31px, rgba(64, 58, 54, 0.035) 32px),
+    #f3e0c7;
+}
+
+.notes-drawer {
+  background:
+    linear-gradient(90deg, rgba(128, 100, 155, 0.08) 0 0.55rem, transparent 0.55rem),
+    rgba(255, 245, 218, 0.94);
+}
+
+.drawer-icon {
+  display: grid;
+  width: 2.7rem;
+  height: 2.7rem;
+  place-items: center;
+  border-radius: 0.9rem;
+  color: #87515c;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.drawer-copy small {
+  color: var(--muted);
+}
+
+.drawer-copy h3 {
+  margin: 0.35rem 0 1.35rem;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 1.5rem;
+}
+
+.drawer-copy strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.98rem;
+}
+
+.drawer-copy p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-soft);
+  line-height: 1.6;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.desk-drawer > .icon {
+  width: 1.05rem;
+  margin-top: 0.8rem;
+  color: var(--muted);
+}
+
+.desk-diary .page-heading {
+  margin-top: 0.4rem;
+}
+
+.notes-shelf,
+.note-reader {
+  min-width: 0;
+}
+
+.shelf-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.3rem 0 1.15rem;
+}
+
+.note-filters,
+.note-tags {
+  display: flex;
+  gap: 0.55rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.note-filters {
+  margin-bottom: 0.65rem;
+}
+
+.note-tags {
+  margin-bottom: 1.25rem;
+}
+
+.note-filters::-webkit-scrollbar,
+.note-tags::-webkit-scrollbar {
+  display: none;
+}
+
+.note-filters button,
+.note-tags button {
+  flex: none;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.42);
+  cursor: pointer;
+}
+
+.note-filters button.active,
+.note-tags button.active {
+  border-color: rgba(168, 93, 104, 0.2);
+  color: #65474a;
+  background: #ffdcbb;
+}
+
+.note-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.note-card {
+  --note-accent: #a85d68;
+  position: relative;
+  display: flex;
+  min-height: 13rem;
+  flex-direction: column;
+  padding: 1.35rem 1.35rem 1.2rem 1.7rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--note-accent) 20%, transparent);
+  border-radius: 10px 21px 21px 10px;
+  color: var(--text);
+  text-align: left;
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--note-accent) 9%, transparent), transparent 30%),
+    rgba(255, 250, 240, 0.88);
+  box-shadow: 0 15px 32px rgba(95, 72, 57, 0.09), inset 0 1px rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.note-card:hover {
+  transform: translateY(-3px) rotate(-0.2deg);
+  box-shadow: 0 21px 40px rgba(95, 72, 57, 0.14), inset 0 1px rgba(255, 255, 255, 0.76);
+}
+
+.note-spine {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0.55rem;
+  background: color-mix(in srgb, var(--note-accent) 62%, #fff);
+  box-shadow: inset -1px 0 rgba(64, 58, 54, 0.08);
+}
+
+.note-card-top,
+.note-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.note-card-top {
+  color: var(--note-accent);
+}
+
+.note-card-top small {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.note-card-top .icon {
+  width: 1rem;
+}
+
+.note-card > strong {
+  margin: 1.15rem 0 0.55rem;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 1.22rem;
+  line-height: 1.35;
+}
+
+.note-card > p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-soft);
+  line-height: 1.65;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.note-card-meta {
+  margin-top: auto;
+  padding-top: 1rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.note-tone-rose { --note-accent: #a85d68; }
+.note-tone-amber { --note-accent: #976a36; }
+.note-tone-violet { --note-accent: #80649b; }
+.note-tone-green { --note-accent: #4f8868; }
+.note-tone-blue { --note-accent: #547f8f; }
+
+.reader-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.15rem 0 1rem;
+  padding: 0.6rem 0.8rem;
+  border: 0;
+  border-radius: 10px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.reader-back:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.note-paper {
+  --note-accent: #a85d68;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: clamp(1.4rem, 5vw, 3.2rem);
+  border: 1px solid color-mix(in srgb, var(--note-accent) 18%, transparent);
+  border-radius: 14px 28px 28px 14px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--note-accent) 8%, transparent) 0 0.7rem, transparent 0.7rem),
+    repeating-linear-gradient(0deg, transparent 0, transparent 33px, rgba(64, 58, 54, 0.025) 34px),
+    #fffaf0;
+  box-shadow: var(--shadow), inset 0 1px rgba(255, 255, 255, 0.75);
+}
+
+.note-paper > header {
+  margin-bottom: 1.8rem;
+  padding-bottom: 1.3rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.note-paper > header > p {
+  margin: 0 0 0.55rem;
+  color: var(--note-accent);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.note-paper h2 {
+  margin: 0;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  line-height: 1.2;
+}
+
+.reader-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.reader-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.5);
+  font-size: 0.75rem;
+}
+
+.reader-meta .icon {
+  width: 0.95rem;
+}
+
+@media (max-width: 760px) {
+  .desk-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+  }
+
+  .desk-tabs button {
+    justify-content: center;
+    padding-inline: 0.55rem;
+  }
+
+  .desk-drawers,
+  .note-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .desk-intro {
+    align-items: flex-start;
+    min-height: 0;
+    padding: 1.25rem;
+  }
+
+  .desk-lamp {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+
+  .desk-drawer,
+  .note-card {
+    min-height: 11.5rem;
+  }
+
+  .shelf-heading {
+    align-items: flex-start;
+  }
+
+  .note-paper {
+    margin-inline: -0.25rem;
+    border-radius: 9px 20px 20px 9px;
+  }
+}
+
+@media (max-width: 430px) {
+  .desk-intro {
+    display: block;
+  }
+
+  .desk-lamp {
+    margin-bottom: 1rem;
+  }
+
+  .desk-drawer {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .desk-drawer > .icon {
+    display: none;
+  }
+
+  .drawer-copy h3 {
+    margin-bottom: 0.9rem;
+  }
+
+  .note-card-meta span {
+    max-width: 9.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
