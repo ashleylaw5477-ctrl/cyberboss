@@ -4,6 +4,7 @@ set -eu
 mkdir -p "$HOME" "$CYBERBOSS_STATE_DIR" "$CYBERBOSS_WORKSPACE_ROOT"
 
 if [ "${CYBERBOSS_AUTOSTART:-false}" = "true" ]; then
+  node ./scripts/migrate-first-note.js || echo "[cyberboss] first note migration failed; continuing startup" >&2
   exec node ./scripts/zeabur-supervisor.js
 fi
 

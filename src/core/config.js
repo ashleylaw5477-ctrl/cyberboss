@@ -42,6 +42,7 @@ function readConfig() {
     stickerTagsTemplateFile: path.resolve(__dirname, "..", "..", "templates", "stickers", "tags.json"),
     stickerNormalizeGifScript: path.resolve(__dirname, "..", "..", "scripts", "normalize-sticker-gif.js"),
     diaryDir: path.join(stateDir, "diary"),
+    notesDir: path.join(stateDir, "notes"),
     activityLogFile: path.join(stateDir, "activity-log.jsonl"),
     dashboardHost: readTextEnv("CYBERBOSS_DASHBOARD_HOST") || "0.0.0.0",
     dashboardPort: readIntEnv("CYBERBOSS_DASHBOARD_PORT") || readIntEnv("PORT") || 3000,

@@ -19,6 +19,7 @@ test("dashboard server protects API routes and enforces CSRF on mutations", asyn
       activityLogFile: path.join(rootDir, "activity-log.jsonl"),
       runtime: "claudecode",
       diaryDir: path.join(rootDir, "diary"),
+      notesDir: path.join(rootDir, "notes"),
       reminderQueueFile: path.join(rootDir, "reminder-queue.json"),
       checkinConfigFile: path.join(rootDir, "checkin-config.json"),
       sessionsFile: path.join(rootDir, "sessions.json"),
@@ -35,6 +36,9 @@ test("dashboard server protects API routes and enforces CSRF on mutations", asyn
     auth: new DashboardAuth({ password: "correct horse battery staple", secret: "test" }),
     dataService: {
       getOverview: () => ({ agent: { name: "Knox" } }),
+      getDesk: async () => ({ latestNote: null, latestDiary: null, counts: { notes: 0, diaryDays: 0 } }),
+      getNotes: async () => ({ items: [{ id: "note_test_abcdef123456", title: "Test" }], categories: [], tags: [] }),
+      getNote: async (id) => ({ id, title: "Test", body: "Markdown" }),
       async saveStickerUpload(upload) {
         assert.equal(fs.existsSync(upload.filePath), true);
         receivedUpload = upload;
@@ -75,6 +79,18 @@ test("dashboard server protects API routes and enforces CSRF on mutations", asyn
   });
   assert.equal(overview.status, 200);
   assert.equal((await overview.json()).agent.name, "Knox");
+
+  const desk = await fetch(`${baseUrl}/api/desk`, { headers: { cookie } });
+  assert.equal(desk.status, 200);
+  assert.equal((await desk.json()).counts.notes, 0);
+
+  const notes = await fetch(`${baseUrl}/api/notes`, { headers: { cookie } });
+  assert.equal(notes.status, 200);
+  assert.equal((await notes.json()).items[0].title, "Test");
+
+  const note = await fetch(`${baseUrl}/api/notes/note_test_abcdef123456`, { headers: { cookie } });
+  assert.equal(note.status, 200);
+  assert.equal((await note.json()).body, "Markdown");
 
   const uploadBody = new FormData();
   uploadBody.set("file", new Blob(["fake png bytes"], { type: "image/png" }), "preview.png");

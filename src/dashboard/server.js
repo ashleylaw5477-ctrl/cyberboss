@@ -8,6 +8,7 @@ const Busboy = require("busboy");
 
 const { DashboardAuth, LoginRateLimiter, isSameOriginRequest } = require("./auth");
 const { DashboardDataService, DashboardInputError } = require("./data-service");
+const { NoteNotFoundError } = require("../services/note-service");
 
 const MAX_JSON_BYTES = 64 * 1024;
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -102,6 +103,27 @@ async function routeRequest(context) {
 
   if (pathname === "/api/diary" && request.method === "GET") {
     return sendJson(response, 200, context.dataService.getDiary(requestUrl.searchParams.get("date") || ""));
+  }
+
+  if (pathname === "/api/desk" && request.method === "GET") {
+    return sendJson(response, 200, await context.dataService.getDesk());
+  }
+
+  if (pathname === "/api/notes" && request.method === "GET") {
+    return sendJson(response, 200, await context.dataService.getNotes({
+      category: requestUrl.searchParams.get("category") || "",
+      tag: requestUrl.searchParams.get("tag") || "",
+      query: requestUrl.searchParams.get("query") || "",
+    }));
+  }
+
+  const noteMatch = pathname.match(/^\/api\/notes\/([^/]+)$/);
+  if (noteMatch && request.method === "GET") {
+    return sendJson(
+      response,
+      200,
+      await context.dataService.getNote(decodeURIComponent(noteMatch[1]))
+    );
   }
 
   if (pathname === "/api/activity" && request.method === "GET") {
@@ -404,6 +426,13 @@ function handleRequestError(error, response) {
     response.destroy(error);
     return;
   }
+  if (error instanceof NoteNotFoundError) {
+    sendJson(response, 404, {
+      error: "not_found",
+      message: "找不到这篇笔记。",
+    });
+    return;
+  }
   if (error instanceof DashboardInputError || isKnownValidationError(error)) {
     sendJson(response, 400, {
       error: "invalid_input",
@@ -419,7 +448,7 @@ function handleRequestError(error, response) {
 }
 
 function isKnownValidationError(error) {
-  return /Sticker|sticker|description|tags|image/i.test(String(error?.message || ""));
+  return /Sticker|sticker|description|tags|image|Note|note/i.test(String(error?.message || ""));
 }
 
 function sendJson(response, statusCode, value) {

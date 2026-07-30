@@ -6,7 +6,7 @@ import { dashboardApi, setCsrfToken } from "./api";
 
 const NAV_ITEMS = [
   { id: "home", label: "首页", icon: "home" },
-  { id: "diary", label: "日记", icon: "book" },
+  { id: "desk", label: "书桌", icon: "notebook" },
   { id: "activity", label: "轨迹", icon: "pulse" },
   { id: "stickers", label: "表情包", icon: "image" },
 ];
@@ -180,7 +180,7 @@ function DashboardShell({ onLogout, onUnauthorized }) {
   const pageTitle = NAV_ITEMS.find((item) => item.id === activePage)?.label || "首页";
   const page = {
     home: <HomePage onUnauthorized={onUnauthorized} />,
-    diary: <DiaryPage onUnauthorized={onUnauthorized} />,
+    desk: <DeskPage onUnauthorized={onUnauthorized} />,
     activity: <ActivityPage onUnauthorized={onUnauthorized} />,
     stickers: <StickersPage onUnauthorized={onUnauthorized} />,
   }[activePage];
@@ -342,7 +342,223 @@ function HomePage({ onUnauthorized }) {
   );
 }
 
-function DiaryPage({ onUnauthorized }) {
+function DeskPage({ onUnauthorized }) {
+  const [section, setSection] = useState("home");
+  return (
+    <PageFrame>
+      <PageHeading
+        eyebrow="KNOX'S DESK"
+        title="Knox 的书桌"
+        subtitle="日记记下发生过什么，笔记留下他真正学会的东西。"
+      />
+      <nav className="desk-tabs" aria-label="书桌内容">
+        {[
+          { id: "home", label: "书桌", icon: "desk" },
+          { id: "diary", label: "日记", icon: "calendar" },
+          { id: "notes", label: "笔记", icon: "notebook" },
+        ].map((item) => (
+          <button
+            aria-current={section === item.id ? "page" : undefined}
+            className={section === item.id ? "active" : ""}
+            key={item.id}
+            onClick={() => setSection(item.id)}
+            type="button"
+          >
+            <Icon name={item.icon} />
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
+      {section === "home" ? (
+        <DeskOverview onOpen={setSection} onUnauthorized={onUnauthorized} />
+      ) : null}
+      {section === "diary" ? <DiaryPage embedded onUnauthorized={onUnauthorized} /> : null}
+      {section === "notes" ? <NotesShelf onUnauthorized={onUnauthorized} /> : null}
+    </PageFrame>
+  );
+}
+
+function DeskOverview({ onOpen, onUnauthorized }) {
+  const { data, error, loading, refresh } = useRemoteData(
+    dashboardApi.desk,
+    [],
+    { onUnauthorized }
+  );
+  if (loading) return <ContentSkeleton rows={3} />;
+  if (error) return <PageError error={error} onRetry={refresh} inline />;
+  return (
+    <div className="desk-overview">
+      <section className="desk-intro">
+        <span className="desk-lamp"><Icon name="lamp" /></span>
+        <div>
+          <p>PRIVATE ARCHIVE</p>
+          <h2>今天想翻哪一个抽屉？</h2>
+          <span>这里没有待办和统计，只有 Knox 认真留下的东西。</span>
+        </div>
+      </section>
+      <div className="desk-drawers">
+        <button className="desk-drawer diary-drawer" onClick={() => onOpen("diary")} type="button">
+          <span className="drawer-icon"><Icon name="calendar" /></span>
+          <div className="drawer-copy">
+            <small>按日期收好 · {data.counts.diaryDays} 天</small>
+            <h3>日记</h3>
+            {data.latestDiary ? (
+              <>
+                <strong>{formatLongDate(data.latestDiary.date)}</strong>
+                <p>{data.latestDiary.summary || data.latestDiary.title}</p>
+              </>
+            ) : <p>还没有写下第一天。</p>}
+          </div>
+          <Icon name="chevron" />
+        </button>
+        <button className="desk-drawer notes-drawer" onClick={() => onOpen("notes")} type="button">
+          <span className="drawer-icon"><Icon name="notebook" /></span>
+          <div className="drawer-copy">
+            <small>按主题沉淀 · {data.counts.notes} 篇</small>
+            <h3>笔记</h3>
+            {data.latestNote ? (
+              <>
+                <strong>{data.latestNote.title}</strong>
+                <p>{data.latestNote.summary || "一篇刚整理好的主题笔记。"}</p>
+              </>
+            ) : <p>第一本薄笔记还在等内容。</p>}
+          </div>
+          <Icon name="chevron" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function NotesShelf({ onUnauthorized }) {
+  const { data, error, loading, refresh } = useRemoteData(
+    dashboardApi.notes,
+    [],
+    { onUnauthorized }
+  );
+  const [category, setCategory] = useState("");
+  const [tag, setTag] = useState("");
+  const [selectedId, setSelectedId] = useState("");
+  const [returnScroll, setReturnScroll] = useState(0);
+  const items = useMemo(() => (data?.items || [])
+    .filter((item) => !category || item.category === category)
+    .filter((item) => !tag || item.tags.includes(tag)), [data?.items, category, tag]);
+
+  if (selectedId) {
+    return (
+      <NoteReader
+        id={selectedId}
+        onBack={() => {
+          setSelectedId("");
+          window.requestAnimationFrame(() => window.scrollTo({ top: returnScroll, behavior: "auto" }));
+        }}
+        onUnauthorized={onUnauthorized}
+      />
+    );
+  }
+
+  return (
+    <section className="notes-shelf">
+      <header className="shelf-heading">
+        <div><p>TOPIC NOTEBOOKS</p><h2>主题笔记</h2></div>
+        <span className="readonly-badge"><Icon name="eye" /> 首版只读</span>
+      </header>
+      {data?.categories?.length ? (
+        <div className="note-filters" aria-label="按分类筛选">
+          <button className={!category ? "active" : ""} onClick={() => setCategory("")} type="button">全部</button>
+          {data.categories.map((value) => (
+            <button
+              className={category === value ? "active" : ""}
+              key={value}
+              onClick={() => setCategory(value)}
+              type="button"
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {data?.tags?.length ? (
+        <div className="note-tags" aria-label="按标签筛选">
+          {data.tags.map((value) => (
+            <button
+              className={tag === value ? "active" : ""}
+              key={value}
+              onClick={() => setTag(tag === value ? "" : value)}
+              type="button"
+            >
+              #{value}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {loading ? <ContentSkeleton rows={4} /> : null}
+      {error ? <PageError error={error} onRetry={refresh} inline /> : null}
+      {!loading && !error && items.length ? (
+        <div className="note-grid">
+          {items.map((item) => (
+            <button
+              className={`note-card note-tone-${categoryTone(item.category)}`}
+              key={item.id}
+              onClick={() => {
+                setReturnScroll(window.scrollY);
+                setSelectedId(item.id);
+                window.scrollTo({ top: 0, behavior: "auto" });
+              }}
+              type="button"
+            >
+              <span className="note-spine" />
+              <span className="note-card-top">
+                <small>{item.category || "未分类"}</small>
+                <Icon name="chevron" />
+              </span>
+              <strong>{item.title}</strong>
+              <p>{item.summary || "Knox 没有给这篇笔记写摘要。"}</p>
+              <span className="note-card-meta">
+                <time>{formatCompactDate(item.updatedAt)}</time>
+                <span>{item.tags.slice(0, 2).map((value) => `#${value}`).join(" ")}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {!loading && !error && !items.length ? (
+        <EmptyState icon="notebook" title="这个抽屉还是空的" text="Knox 主动整理的主题笔记会出现在这里。" />
+      ) : null}
+    </section>
+  );
+}
+
+function NoteReader({ id, onBack, onUnauthorized }) {
+  const loader = useCallback(() => dashboardApi.note(id), [id]);
+  const { data, error, loading, refresh } = useRemoteData(loader, [id], { onUnauthorized });
+  return (
+    <article className="note-reader">
+      <button className="reader-back" onClick={onBack} type="button">
+        <Icon name="back" /> 返回笔记原位置
+      </button>
+      {loading ? <ContentSkeleton rows={5} /> : null}
+      {error ? <PageError error={error} onRetry={refresh} inline /> : null}
+      {data ? (
+        <div className={`note-paper note-tone-${categoryTone(data.category)}`}>
+          <header>
+            <p>{data.category || "未分类"}</p>
+            <h2>{data.title}</h2>
+            <div className="reader-meta">
+              <span><Icon name="clock" /> {formatDateTime(data.updatedAt)}</span>
+              {data.tags.map((value) => <span key={value}>#{value}</span>)}
+            </div>
+          </header>
+          <div className="markdown-body">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{data.body}</ReactMarkdown>
+          </div>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function DiaryPage({ onUnauthorized, embedded = false }) {
   const [selectedDate, setSelectedDate] = useState("");
   const loader = useCallback(() => dashboardApi.diary(selectedDate), [selectedDate]);
   const { data, error, loading, refresh } = useRemoteData(loader, [selectedDate], { onUnauthorized });
@@ -351,8 +567,8 @@ function DiaryPage({ onUnauthorized }) {
     if (data?.date && !selectedDate) setSelectedDate(data.date);
   }, [data?.date, selectedDate]);
 
-  return (
-    <PageFrame>
+  const content = (
+    <>
       <PageHeading
         eyebrow="LEDGER OF LIFE"
         title="日记"
@@ -402,8 +618,9 @@ function DiaryPage({ onUnauthorized }) {
           )}
         </article>
       ) : null}
-    </PageFrame>
+    </>
   );
+  return embedded ? <section className="desk-diary">{content}</section> : <PageFrame>{content}</PageFrame>;
 }
 
 function ActivityPage({ onUnauthorized }) {
@@ -791,9 +1008,12 @@ function BrandMark({ size = "normal" }) {
 
 function Icon({ name }) {
   const paths = {
-    home: <><path d="m3 10 9-7 9 7" /><path d="M5 9v11h14V9M9 20v-7h6v7" /></>,
-    book: <><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H11v18H6.5A2.5 2.5 0 0 0 4 22.5Z" /><path d="M20 4.5A2.5 2.5 0 0 0 17.5 2H13v18h4.5a2.5 2.5 0 0 1 2.5 2.5Z" /></>,
-    pulse: <><path d="M3 12h4l2-7 4 14 2-7h6" /></>,
+    home: <><path d="M3.5 10.5 12 3.7l8.5 6.8" /><path d="M5.8 9.7v10.1h12.4V9.7M9.4 19.8v-6.2h5.2v6.2" /></>,
+    book: <><path d="M4.2 5.2A2.7 2.7 0 0 1 6.9 2.5h4.3v17.2H6.9a2.7 2.7 0 0 0-2.7 2.7Z" /><path d="M19.8 5.2a2.7 2.7 0 0 0-2.7-2.7h-4.3v17.2h4.3a2.7 2.7 0 0 1 2.7 2.7Z" /></>,
+    notebook: <><rect x="5" y="3" width="15.5" height="18" rx="2.5" /><path d="M8.5 3v18M3.5 7h3M3.5 12h3M3.5 17h3M12 8h5M12 12h5" /></>,
+    desk: <><path d="M4 13.5h16M6 13.5V21M18 13.5V21M3 10.5h18l-1.3-5.2a2 2 0 0 0-1.9-1.5H6.2a2 2 0 0 0-1.9 1.5Z" /><path d="M9 7.5h6" /></>,
+    lamp: <><path d="M9.5 3h5l2.7 7H6.8ZM12 10v6M8 21h8M9 16h6" /><path d="M17.5 7.5h2a2 2 0 0 1 2 2V12" /></>,
+    pulse: <><path d="M3 12h4l2.1-6.7 4 13.4 2-6.7H21" /></>,
     image: <><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2" /><path d="m21 15-5-5L5 20" /></>,
     lock: <><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
     arrow: <><path d="M5 12h14M13 6l6 6-6 6" /></>,
@@ -816,8 +1036,10 @@ function Icon({ name }) {
     upload: <><path d="M12 16V4m0 0L7 9m5-5 5 5M4 20h16" /></>,
     refresh: <><path d="M20 7v5h-5" /><path d="M19 12a8 8 0 1 1-2-6" /></>,
     warning: <><path d="M12 3 2 21h20ZM12 9v5M12 18h.01" /></>,
+    chevron: <><path d="m9 5 7 7-7 7" /></>,
+    back: <><path d="m15 18-6-6 6-6M9 12h11" /></>,
   };
-  return <svg aria-hidden="true" className="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8">{paths[name] || paths.spark}</svg>;
+  return <svg aria-hidden="true" className="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.65">{paths[name] || paths.spark}</svg>;
 }
 
 function useRemoteData(loader, dependencies, { onUnauthorized, intervalMs = 0 } = {}) {
@@ -849,6 +1071,18 @@ function useRemoteData(loader, dependencies, { onUnauthorized, intervalMs = 0 } 
 
 function splitTags(value) {
   return [...new Set(String(value || "").split(/[,，]/).map((tag) => tag.trim()).filter(Boolean))].slice(0, 4);
+}
+
+function categoryTone(value) {
+  const text = String(value || "");
+  if (/Ally|关于|关系|我们/i.test(text)) return "rose";
+  if (/游戏|课程|学习/i.test(text)) return "amber";
+  if (/前端|设计|代码|技术/i.test(text)) return "violet";
+  if (/花园|植物|自然/i.test(text)) return "green";
+  if (/复盘|事故|问题/i.test(text)) return "blue";
+  const tones = ["rose", "amber", "violet", "green", "blue"];
+  const hash = [...text].reduce((total, character) => total + character.codePointAt(0), 0);
+  return tones[hash % tones.length];
 }
 
 function shortId(value) {

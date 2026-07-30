@@ -93,6 +93,108 @@ const PROJECT_TOOLS = [
     },
   },
   {
+    name: "cyberboss_note_create",
+    description: "Create a durable topic note in Knox's private notebook.",
+    shortHint: "Create a durable topic note with Markdown body content.",
+    topics: ["note"],
+    inputSchema: {
+      type: "object",
+      required: ["title", "body"],
+      properties: {
+        title: { type: "string", description: "Short note title." },
+        body: { type: "string", description: "Markdown note body." },
+        category: { type: "string", description: "Optional free-text category." },
+        tags: {
+          type: "array",
+          description: "Optional topic tags.",
+          items: { type: "string" },
+        },
+        summary: { type: "string", description: "Optional short summary." },
+      },
+      additionalProperties: false,
+    },
+    async handler({ services, args }) {
+      const result = await services.note.create(args);
+      return {
+        text: `Note created: ${result.id}`,
+        data: result,
+      };
+    },
+  },
+  {
+    name: "cyberboss_note_update",
+    description: "Update one durable topic note by its generated note id.",
+    shortHint: "Update an existing topic note without passing a file path.",
+    topics: ["note"],
+    inputSchema: {
+      type: "object",
+      required: ["id"],
+      properties: {
+        id: { type: "string", description: "Generated note id." },
+        title: { type: "string", description: "Optional replacement title." },
+        body: { type: "string", description: "Optional replacement Markdown body." },
+        category: { type: "string", description: "Optional replacement category." },
+        tags: {
+          type: "array",
+          description: "Optional replacement topic tags.",
+          items: { type: "string" },
+        },
+        summary: { type: "string", description: "Optional replacement summary." },
+      },
+      additionalProperties: false,
+    },
+    async handler({ services, args }) {
+      const result = await services.note.update(args);
+      return {
+        text: `Note updated: ${result.id}`,
+        data: result,
+      };
+    },
+  },
+  {
+    name: "cyberboss_note_list",
+    description: "List durable topic notes, optionally filtered by category, tag, or query.",
+    shortHint: "List note metadata without reading unrelated state files.",
+    topics: ["note"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        category: { type: "string" },
+        tag: { type: "string" },
+        query: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+    async handler({ services, args }) {
+      const items = await services.note.list(args);
+      return {
+        text: `Notes loaded: ${items.length}.`,
+        data: { items },
+      };
+    },
+  },
+  {
+    name: "cyberboss_note_get",
+    description: "Read one durable topic note by its generated note id.",
+    shortHint: "Read a topic note without passing a file path.",
+    topics: ["note"],
+    inputSchema: {
+      type: "object",
+      required: ["id"],
+      properties: {
+        id: { type: "string", description: "Generated note id." },
+      },
+      additionalProperties: false,
+    },
+    async handler({ services, args }) {
+      const result = await services.note.get(args);
+      return {
+        text: `Note loaded: ${result.id}`,
+        data: result,
+      };
+    },
+  },
+  {
     name: "cyberboss_reminder_create",
     description: "Create a reminder in Cyberboss.",
     shortHint: "Create a reminder with direct text plus delayMinutes or dueAt.",
