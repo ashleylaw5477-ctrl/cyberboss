@@ -1,10 +1,30 @@
 FROM node:22-bookworm-slim
 
+ARG FEEDLING_CONSUMER_REPO=https://github.com/teleport-computer/feedling-mcp.git
+ARG FEEDLING_CONSUMER_REF=main
+
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates imagemagick \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        imagemagick \
+        git \
+        python3 \
+        python3-pip \
+        python3-venv \
+        build-essential \
+        libffi-dev \
+        libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# The resident consumer is always sourced from the official release branch.
+# Keep this checkout separate from CyberBoss so identity/Memory files never get
+# mixed into the consumer update path.
+RUN git clone --depth 1 --branch "${FEEDLING_CONSUMER_REF}" "${FEEDLING_CONSUMER_REPO}" /opt/feedling-mcp \
+    && test "$(git -C /opt/feedling-mcp rev-parse HEAD)" = "$(git -C /opt/feedling-mcp rev-parse "origin/${FEEDLING_CONSUMER_REF}")" \
+    && python3 -m venv /opt/feedling-venv \
+    && /opt/feedling-venv/bin/pip install --no-cache-dir -r /opt/feedling-mcp/tools/chat_resident_requirements.txt
 
 COPY package.json package-lock.json ./
 COPY vendor ./vendor
@@ -35,6 +55,9 @@ ENV HOME=/data/home \
     CYBERBOSS_DASHBOARD_ENABLED=true \
     CYBERBOSS_ENABLE_LOCATION_SERVER=false \
     CYBERBOSS_AUTOSTART=false \
+    FEEDLING_RESIDENT_ENABLED=false \
+    FEEDLING_CONSUMER_DIR=/opt/feedling-mcp \
+    FEEDLING_CONSUMER_PYTHON=/opt/feedling-venv/bin/python \
     DISABLE_AUTOUPDATER=1 \
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 
