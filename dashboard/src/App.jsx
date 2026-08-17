@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { id: "desk", label: "书桌", icon: "notebook" },
   { id: "activity", label: "轨迹", icon: "pulse" },
   { id: "stickers", label: "表情包", icon: "image" },
+  { id: "instructions", label: "指令", icon: "edit" },
 ];
 
 const ACTIVITY_TYPES = [
@@ -183,6 +184,7 @@ function DashboardShell({ onLogout, onUnauthorized }) {
     desk: <DeskPage onUnauthorized={onUnauthorized} />,
     activity: <ActivityPage onUnauthorized={onUnauthorized} />,
     stickers: <StickersPage onUnauthorized={onUnauthorized} />,
+    instructions: <InstructionsPage onUnauthorized={onUnauthorized} />,
   }[activePage];
 
   return (
@@ -601,6 +603,84 @@ function NoteReader({ id, onBack, onUnauthorized, onDeleted }) {
         />
       ) : null}
     </article>
+  );
+}
+
+function InstructionsPage({ onUnauthorized }) {
+  const { data, error, loading, refresh, refreshing } = useRemoteData(
+    dashboardApi.instructions,
+    [],
+    { onUnauthorized }
+  );
+  const [markdown, setMarkdown] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [mutationError, setMutationError] = useState("");
+
+  useEffect(() => {
+    if (data?.markdown !== undefined) {
+      setMarkdown(data.markdown);
+    }
+  }, [data?.updatedAt]);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setNotice("");
+    setMutationError("");
+    try {
+      const next = await dashboardApi.updateInstructions(markdown);
+      setMarkdown(next.markdown);
+      setNotice("已保存。请在微信发送 /reread，让当前对话重新读取它。\n");
+    } catch (requestError) {
+      setMutationError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <PageFrame>
+      <PageHeading
+        eyebrow="WECHAT INSTRUCTIONS"
+        title="对话指令"
+        subtitle="直接编辑当前运行中的 instruction，不用进 Zeabur 终端。"
+        action={<RefreshButton refreshing={refreshing} onClick={refresh} />}
+      />
+      {loading ? <ContentSkeleton rows={5} /> : null}
+      {error ? <PageError error={error} onRetry={refresh} inline /> : null}
+      {!loading && !error ? (
+        <section className="section-card instructions-card">
+          <SectionTitle
+            icon="edit"
+            title="weixin-instructions.md"
+            subtitle="这里保存 Knox 的人格、语气和陪伴方式。"
+          />
+          <div className="instructions-notice">
+            <Icon name="spark" />
+            <span>保存后不会自动打断当前对话。请发送 <code>/reread</code>，它才会重新加载最新内容。</span>
+          </div>
+          <form onSubmit={handleSubmit}>
+            <textarea
+              aria-label="WeChat instruction 内容"
+              className="instructions-editor"
+              maxLength={512 * 1024}
+              onChange={(event) => setMarkdown(event.target.value)}
+              spellCheck="false"
+              value={markdown}
+            />
+            {mutationError ? <p className="form-error mutation-error">{mutationError}</p> : null}
+            {notice ? <p className="instructions-saved">{notice}</p> : null}
+            <div className="instructions-footer">
+              <span>{data.updatedAt ? `上次修改：${formatDateTime(data.updatedAt)}` : "还没有保存记录"}</span>
+              <button className="primary-button compact" disabled={saving || !markdown.trim()} type="submit">
+                <Icon name="check" /> {saving ? "保存中…" : "保存并更新"}
+              </button>
+            </div>
+          </form>
+        </section>
+      ) : null}
+    </PageFrame>
   );
 }
 

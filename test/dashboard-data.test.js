@@ -111,6 +111,19 @@ test("dashboard data can update and delete a diary day safely", async (t) => {
   await assert.rejects(() => service.updateDiary("not-a-date", "body"), /YYYY-MM-DD/);
 });
 
+test("dashboard data can edit the persisted WeChat instructions", async (t) => {
+  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "cyberboss-dashboard-instructions-"));
+  t.after(() => fs.rmSync(stateDir, { recursive: true, force: true }));
+  const config = createTestConfig(stateDir);
+  const service = new DashboardDataService({ config });
+
+  assert.equal(service.getInstructions().markdown, "");
+  const updated = await service.updateInstructions("# Persona\n\nBe warm and concise.");
+  assert.equal(updated.markdown, "# Persona\n\nBe warm and concise.\n");
+  assert.equal(fs.readFileSync(config.weixinInstructionsFile, "utf8"), updated.markdown);
+  await assert.rejects(() => service.updateInstructions("   "), /cannot be empty/i);
+});
+
 test("activity log ignores corrupt lines and returns newest entries first", (t) => {
   const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "cyberboss-activity-log-"));
   t.after(() => fs.rmSync(stateDir, { recursive: true, force: true }));
@@ -173,6 +186,7 @@ function createTestConfig(stateDir) {
     sessionsFile: path.join(stateDir, "sessions.json"),
     reminderQueueFile: path.join(stateDir, "reminder-queue.json"),
     checkinConfigFile: path.join(stateDir, "checkin-config.json"),
+    weixinInstructionsFile: path.join(stateDir, "weixin-instructions.md"),
     stickersDir: path.join(stateDir, "stickers"),
     stickerAssetsDir: path.join(stateDir, "stickers", "assets"),
     stickersIndexFile: path.join(stateDir, "stickers", "index.json"),
