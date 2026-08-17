@@ -105,6 +105,26 @@ async function routeRequest(context) {
     return sendJson(response, 200, context.dataService.getDiary(requestUrl.searchParams.get("date") || ""));
   }
 
+  if (pathname === "/api/diary" && request.method === "PATCH") {
+    const body = await readJsonBody(request);
+    return sendJson(
+      response,
+      200,
+      await context.dataService.updateDiary(
+        requestUrl.searchParams.get("date") || "",
+        body.markdown
+      )
+    );
+  }
+
+  if (pathname === "/api/diary" && request.method === "DELETE") {
+    return sendJson(
+      response,
+      200,
+      await context.dataService.deleteDiary(requestUrl.searchParams.get("date") || "")
+    );
+  }
+
   if (pathname === "/api/desk" && request.method === "GET") {
     return sendJson(response, 200, await context.dataService.getDesk());
   }
@@ -123,6 +143,23 @@ async function routeRequest(context) {
       response,
       200,
       await context.dataService.getNote(decodeURIComponent(noteMatch[1]))
+    );
+  }
+
+  if (noteMatch && request.method === "PATCH") {
+    const body = await readJsonBody(request);
+    return sendJson(
+      response,
+      200,
+      await context.dataService.updateNote(decodeURIComponent(noteMatch[1]), body)
+    );
+  }
+
+  if (noteMatch && request.method === "DELETE") {
+    return sendJson(
+      response,
+      200,
+      await context.dataService.deleteNote(decodeURIComponent(noteMatch[1]))
     );
   }
 
@@ -149,6 +186,11 @@ async function routeRequest(context) {
       { tags: body.tags, desc: body.desc }
     );
     return sendJson(response, 200, { sticker });
+  }
+
+  if (stickerMatch && request.method === "DELETE") {
+    const deleted = await context.dataService.deleteSticker(decodeURIComponent(stickerMatch[1]));
+    return sendJson(response, 200, { deleted });
   }
 
   const mediaMatch = pathname.match(/^\/api\/stickers\/([^/]+)\/media$/);
@@ -448,7 +490,9 @@ function handleRequestError(error, response) {
 }
 
 function isKnownValidationError(error) {
-  return /Sticker|sticker|description|tags|image|Note|note/i.test(String(error?.message || ""));
+  return /Sticker|sticker|description|tags|image|Note|note|Diary|diary|content|title|body|category/i.test(
+    String(error?.message || "")
+  );
 }
 
 function sendJson(response, statusCode, value) {

@@ -453,6 +453,11 @@ function NotesShelf({ onUnauthorized }) {
           window.requestAnimationFrame(() => window.scrollTo({ top: returnScroll, behavior: "auto" }));
         }}
         onUnauthorized={onUnauthorized}
+        onDeleted={async () => {
+          setSelectedId("");
+          await refresh();
+          window.requestAnimationFrame(() => window.scrollTo({ top: returnScroll, behavior: "auto" }));
+        }}
       />
     );
   }
@@ -461,7 +466,7 @@ function NotesShelf({ onUnauthorized }) {
     <section className="notes-shelf">
       <header className="shelf-heading">
         <div><p>TOPIC NOTEBOOKS</p><h2>主题笔记</h2></div>
-        <span className="readonly-badge"><Icon name="eye" /> 首版只读</span>
+        <span className="edit-badge"><Icon name="edit" /> 可编辑</span>
       </header>
       {data?.categories?.length ? (
         <div className="note-filters" aria-label="按分类筛选">
@@ -529,9 +534,27 @@ function NotesShelf({ onUnauthorized }) {
   );
 }
 
-function NoteReader({ id, onBack, onUnauthorized }) {
+function NoteReader({ id, onBack, onUnauthorized, onDeleted }) {
   const loader = useCallback(() => dashboardApi.note(id), [id]);
   const { data, error, loading, refresh } = useRemoteData(loader, [id], { onUnauthorized });
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [mutationError, setMutationError] = useState("");
+
+  async function handleDelete() {
+    if (!data || !window.confirm(`删除笔记“${data.title}”？此操作不可撤销。`)) return;
+    setDeleting(true);
+    setMutationError("");
+    try {
+      await dashboardApi.deleteNote(data.id);
+      await onDeleted?.();
+    } catch (requestError) {
+      setMutationError(requestError.message);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <article className="note-reader">
       <button className="reader-back" onClick={onBack} type="button">
@@ -542,8 +565,20 @@ function NoteReader({ id, onBack, onUnauthorized }) {
       {data ? (
         <div className={`note-paper note-tone-${categoryTone(data.category)}`}>
           <header>
-            <p>{data.category || "未分类"}</p>
-            <h2>{data.title}</h2>
+            <div className="reader-heading-row">
+              <div>
+                <p>{data.category || "未分类"}</p>
+                <h2>{data.title}</h2>
+              </div>
+              <div className="reader-actions">
+                <button className="ghost-button compact" onClick={() => setEditing(true)} type="button">
+                  <Icon name="edit" /> 编辑
+                </button>
+                <button className="danger-button compact" disabled={deleting} onClick={handleDelete} type="button">
+                  <Icon name="trash" /> {deleting ? "删除中" : "删除"}
+                </button>
+              </div>
+            </div>
             <div className="reader-meta">
               <span><Icon name="clock" /> {formatDateTime(data.updatedAt)}</span>
               {data.tags.map((value) => <span key={value}>#{value}</span>)}
@@ -554,7 +589,75 @@ function NoteReader({ id, onBack, onUnauthorized }) {
           </div>
         </div>
       ) : null}
+      {mutationError ? <p className="form-error mutation-error">{mutationError}</p> : null}
+      {editing && data ? (
+        <NoteEditDialog
+          note={data}
+          onClose={() => setEditing(false)}
+          onSaved={async () => {
+            setEditing(false);
+            await refresh();
+          }}
+        />
+      ) : null}
     </article>
+  );
+}
+
+function NoteEditDialog({ note, onClose, onSaved }) {
+  const [title, setTitle] = useState(note.title);
+  const [category, setCategory] = useState(note.category || "");
+  const [tags, setTags] = useState(note.tags.join(", "));
+  const [summary, setSummary] = useState(note.summary || "");
+  const [body, setBody] = useState(note.body);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await dashboardApi.updateNote(note.id, {
+        title,
+        category,
+        tags: splitTags(tags, 8),
+        summary,
+        body,
+      });
+      await onSaved();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose} title="编辑笔记">
+      <form className="modal-form editor-form" onSubmit={handleSubmit}>
+        <div className="editor-grid">
+          <FormField label="标题"><input maxLength={200} onChange={(event) => setTitle(event.target.value)} value={title} /></FormField>
+          <FormField label="分类"><input maxLength={80} onChange={(event) => setCategory(event.target.value)} value={category} /></FormField>
+        </div>
+        <FormField hint="用逗号分隔，最多 8 个" label="标签">
+          <input onChange={(event) => setTags(event.target.value)} value={tags} />
+        </FormField>
+        <FormField hint="留空会根据正文自动生成" label="摘要">
+          <textarea maxLength={500} onChange={(event) => setSummary(event.target.value)} rows="2" value={summary} />
+        </FormField>
+        <FormField label="正文（支持 Markdown）">
+          <textarea className="editor-body" maxLength={512 * 1024} onChange={(event) => setBody(event.target.value)} rows="14" value={body} />
+        </FormField>
+        {error ? <p className="form-error">{error}</p> : null}
+        <div className="modal-actions">
+          <button className="ghost-button" onClick={onClose} type="button">取消</button>
+          <button className="primary-button compact" disabled={saving || !title.trim() || !body.trim()} type="submit">
+            {saving ? "保存中…" : "保存修改"}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -562,17 +665,35 @@ function DiaryPage({ onUnauthorized, embedded = false }) {
   const [selectedDate, setSelectedDate] = useState("");
   const loader = useCallback(() => dashboardApi.diary(selectedDate), [selectedDate]);
   const { data, error, loading, refresh } = useRemoteData(loader, [selectedDate], { onUnauthorized });
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [mutationError, setMutationError] = useState("");
 
   useEffect(() => {
     if (data?.date && !selectedDate) setSelectedDate(data.date);
   }, [data?.date, selectedDate]);
+
+  async function handleDelete() {
+    if (!data?.exists || !window.confirm(`删除 ${data.date} 的整篇日记？此操作不可撤销。`)) return;
+    setDeleting(true);
+    setMutationError("");
+    try {
+      const next = await dashboardApi.deleteDiary(data.date);
+      setSelectedDate(next.dates?.[0] || "");
+      await refresh();
+    } catch (requestError) {
+      setMutationError(requestError.message);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const content = (
     <>
       <PageHeading
         eyebrow="LEDGER OF LIFE"
         title="日记"
-        subtitle="按日期翻阅他写下的东西。第一版只读，不会碰坏原文。"
+        subtitle="按日期翻阅、编辑或删除他写下的东西。保存前会先留在编辑框里确认。"
       />
       <section className="diary-toolbar">
         <div className="date-pills">
@@ -607,7 +728,16 @@ function DiaryPage({ onUnauthorized, embedded = false }) {
               <p>{formatLongDate(data.date)}</p>
               <h2>{data.entries[0]?.title || "今天的记录"}</h2>
             </div>
-            <span className="readonly-badge"><Icon name="eye" /> 只读</span>
+            {data.exists ? (
+              <div className="diary-actions">
+                <button className="ghost-button compact" onClick={() => setEditing(true)} type="button">
+                  <Icon name="edit" /> 编辑
+                </button>
+                <button className="danger-button compact" disabled={deleting} onClick={handleDelete} type="button">
+                  <Icon name="trash" /> {deleting ? "删除中" : "删除"}
+                </button>
+              </div>
+            ) : null}
           </header>
           {data.exists ? (
             <div className="markdown-body">
@@ -618,9 +748,58 @@ function DiaryPage({ onUnauthorized, embedded = false }) {
           )}
         </article>
       ) : null}
+      {mutationError ? <p className="form-error mutation-error">{mutationError}</p> : null}
+      {editing && data?.exists ? (
+        <DiaryEditDialog
+          date={data.date}
+          markdown={data.markdown}
+          onClose={() => setEditing(false)}
+          onSaved={async () => {
+            setEditing(false);
+            await refresh();
+          }}
+        />
+      ) : null}
     </>
   );
   return embedded ? <section className="desk-diary">{content}</section> : <PageFrame>{content}</PageFrame>;
+}
+
+function DiaryEditDialog({ date, markdown, onClose, onSaved }) {
+  const [value, setValue] = useState(markdown);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await dashboardApi.updateDiary(date, value);
+      await onSaved();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose} title={`编辑 ${date} 的日记`}>
+      <form className="modal-form editor-form" onSubmit={handleSubmit}>
+        <FormField hint="支持 Markdown；如果想清空整天记录，请使用删除按钮" label="日记正文">
+          <textarea className="editor-body diary-editor-body" maxLength={512 * 1024} onChange={(event) => setValue(event.target.value)} rows="18" value={value} />
+        </FormField>
+        {error ? <p className="form-error">{error}</p> : null}
+        <div className="modal-actions">
+          <button className="ghost-button" onClick={onClose} type="button">取消</button>
+          <button className="primary-button compact" disabled={saving || !value.trim()} type="submit">
+            {saving ? "保存中…" : "保存修改"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
 }
 
 function ActivityPage({ onUnauthorized }) {
@@ -709,12 +888,24 @@ function StickersPage({ onUnauthorized }) {
     });
   }, [activeTag, data?.items, query]);
 
+  async function handleDeleteSticker(sticker) {
+    if (!window.confirm(`删除表情包“${sticker.stickerId}”？此操作不可撤销。`)) return;
+    setNotice("");
+    try {
+      await dashboardApi.deleteSticker(sticker.stickerId);
+      setNotice("表情包已删除。");
+      await refresh();
+    } catch (requestError) {
+      setNotice(requestError.message);
+    }
+  }
+
   return (
     <PageFrame>
       <PageHeading
         eyebrow="STICKER VAULT"
         title="表情包"
-        subtitle="给他的情绪找一个准确的表情。删除功能暂时锁住。"
+        subtitle="给他的情绪找一个准确的表情。现在也可以直接编辑或删除收藏。"
         action={(
           <button className="primary-button compact" onClick={() => setUploading(true)} type="button">
             <Icon name="plus" /> 上传
@@ -750,6 +941,14 @@ function StickersPage({ onUnauthorized }) {
                 <div><strong>{sticker.stickerId}</strong><span>{sticker.desc || "还没有描述"}</span></div>
                 <div className="sticker-tags">
                   {sticker.tags.map((tag) => <span key={tag}>{tag}</span>)}
+                </div>
+                <div className="sticker-card-actions">
+                  <button className="card-action-button" onClick={() => setEditing(sticker)} type="button">
+                    <Icon name="edit" /> 编辑
+                  </button>
+                  <button className="card-action-button danger" onClick={() => handleDeleteSticker(sticker)} type="button">
+                    <Icon name="trash" /> 删除
+                  </button>
                 </div>
               </div>
             </article>
@@ -1031,6 +1230,7 @@ function Icon({ name }) {
     plus: <><path d="M12 5v14M5 12h14" /></>,
     search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
     edit: <><path d="m14 4 6 6L9 21H3v-6Z" /><path d="m12 6 6 6" /></>,
+    trash: <><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3" /></>,
     check: <><path d="m4 12 5 5L20 6" /></>,
     close: <><path d="m6 6 12 12M18 6 6 18" /></>,
     upload: <><path d="M12 16V4m0 0L7 9m5-5 5 5M4 20h16" /></>,
@@ -1069,8 +1269,8 @@ function useRemoteData(loader, dependencies, { onUnauthorized, intervalMs = 0 } 
   return { ...state, refresh };
 }
 
-function splitTags(value) {
-  return [...new Set(String(value || "").split(/[,，]/).map((tag) => tag.trim()).filter(Boolean))].slice(0, 4);
+function splitTags(value, limit = 4) {
+  return [...new Set(String(value || "").split(/[,，]/).map((tag) => tag.trim()).filter(Boolean))].slice(0, limit);
 }
 
 function categoryTone(value) {

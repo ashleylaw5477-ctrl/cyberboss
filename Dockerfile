@@ -9,7 +9,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY vendor ./vendor
 RUN npm ci \
-    && npm install --global @anthropic-ai/claude-code@latest \
+    && npm install --global @anthropic-ai/claude-code@latest @openai/codex@latest \
     && mkdir -p /data/home /data/cyberboss /data/workspace
 
 # Build the vendored Garden wake bridge without depending on private upstream

@@ -43,13 +43,30 @@ export const dashboardApi = {
   overview: () => apiRequest("/api/overview"),
   desk: () => apiRequest("/api/desk"),
   diary: (date = "") => apiRequest(`/api/diary${date ? `?date=${encodeURIComponent(date)}` : ""}`),
+  updateDiary: (date, markdown) => apiRequest(`/api/diary?date=${encodeURIComponent(date)}`, {
+    method: "PATCH",
+    body: { markdown },
+  }),
+  deleteDiary: (date) => apiRequest(`/api/diary?date=${encodeURIComponent(date)}`, {
+    method: "DELETE",
+  }),
   notes: () => apiRequest("/api/notes"),
   note: (id) => apiRequest(`/api/notes/${encodeURIComponent(id)}`),
+  updateNote: (id, value) => apiRequest(`/api/notes/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: value,
+  }),
+  deleteNote: (id) => apiRequest(`/api/notes/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  }),
   activity: (type = "") => apiRequest(`/api/activity${type ? `?type=${encodeURIComponent(type)}` : ""}`),
   stickers: () => apiRequest("/api/stickers"),
   updateSticker: (stickerId, value) => apiRequest(`/api/stickers/${encodeURIComponent(stickerId)}`, {
     method: "PATCH",
     body: value,
+  }),
+  deleteSticker: (stickerId) => apiRequest(`/api/stickers/${encodeURIComponent(stickerId)}`, {
+    method: "DELETE",
   }),
   uploadSticker: (formData) => apiRequest("/api/stickers", {
     method: "POST",
