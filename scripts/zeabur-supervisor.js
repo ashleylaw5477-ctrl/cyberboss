@@ -31,10 +31,16 @@ function stopAll(signal = "SIGTERM") {
   }
 }
 
-function watch(child, label) {
+function watch(child, label, { stopService = true } = {}) {
   child.once("exit", (code, signal) => {
     if (stopping) return;
     const detail = signal ? `signal=${signal}` : `code=${code ?? 0}`;
+    if (!stopService) {
+      console.error(
+        `[cyberboss] ${label} stopped (${detail}); leaving Cyberboss running; diagnose and restart manually`
+      );
+      return;
+    }
     console.error(`[cyberboss] ${label} stopped (${detail}); stopping service`);
     stopAll("SIGTERM");
     process.exitCode = code || 1;
@@ -56,7 +62,7 @@ function startGardenBridge() {
   const env = {
     ...process.env,
     GARDEN_BASE_URL: normalizeText(process.env.GARDEN_BASE_URL)
-      || "https://galatea.abysslumina.com",
+      || "https://wake-v1.abysslumina.com",
     GARDEN_MACHINE_TOKEN: token,
     GARDEN_INJECTOR_EXECUTABLE: process.execPath,
     GARDEN_INJECTOR_ARGS_JSON: JSON.stringify([injector]),
@@ -78,7 +84,7 @@ function startDashboard() {
 
 function main() {
   const bridge = startGardenBridge();
-  if (bridge) watch(bridge, "Garden wake bridge");
+  if (bridge) watch(bridge, "Garden wake bridge", { stopService: false });
 
   const dashboard = startDashboard();
   if (dashboard) watch(dashboard, "Dashboard");
