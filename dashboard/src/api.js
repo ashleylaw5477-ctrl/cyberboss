@@ -42,6 +42,11 @@ export const dashboardApi = {
   logout: () => apiRequest("/api/logout", { method: "POST", body: {} }),
   overview: () => apiRequest("/api/overview"),
   desk: () => apiRequest("/api/desk"),
+  instructions: () => apiRequest("/api/instructions"),
+  updateInstructions: (markdown) => apiRequest("/api/instructions", {
+    method: "PATCH",
+    body: { markdown },
+  }),
   diary: (date = "") => apiRequest(`/api/diary${date ? `?date=${encodeURIComponent(date)}` : ""}`),
   updateDiary: (date, markdown) => apiRequest(`/api/diary?date=${encodeURIComponent(date)}`, {
     method: "PATCH",

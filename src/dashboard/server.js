@@ -10,7 +10,7 @@ const { DashboardAuth, LoginRateLimiter, isSameOriginRequest } = require("./auth
 const { DashboardDataService, DashboardInputError } = require("./data-service");
 const { NoteNotFoundError } = require("../services/note-service");
 
-const MAX_JSON_BYTES = 64 * 1024;
+const MAX_JSON_BYTES = 768 * 1024;
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_UPLOAD_TYPES = new Map([
   ["image/gif", ".gif"],
@@ -103,6 +103,15 @@ async function routeRequest(context) {
 
   if (pathname === "/api/diary" && request.method === "GET") {
     return sendJson(response, 200, context.dataService.getDiary(requestUrl.searchParams.get("date") || ""));
+  }
+
+  if (pathname === "/api/instructions" && request.method === "GET") {
+    return sendJson(response, 200, context.dataService.getInstructions());
+  }
+
+  if (pathname === "/api/instructions" && request.method === "PATCH") {
+    const body = await readJsonBody(request);
+    return sendJson(response, 200, await context.dataService.updateInstructions(body.markdown));
   }
 
   if (pathname === "/api/diary" && request.method === "PATCH") {
@@ -490,7 +499,7 @@ function handleRequestError(error, response) {
 }
 
 function isKnownValidationError(error) {
-  return /Sticker|sticker|description|tags|image|Note|note|Diary|diary|content|title|body|category/i.test(
+  return /Sticker|sticker|description|tags|image|Note|note|Diary|diary|Instruction|instruction|content|title|body|category/i.test(
     String(error?.message || "")
   );
 }
