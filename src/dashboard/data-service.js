@@ -14,6 +14,7 @@ const {
 
 const DIARY_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const STICKER_ID_PATTERN = /^stk_\d+$/i;
+const MAX_INSTRUCTIONS_LENGTH = 512 * 1024;
 
 class DashboardDataService {
   constructor({ config, activityLog = null, stickerService = null, noteService = null } = {}) {
@@ -153,6 +154,34 @@ class DashboardDataService {
       deleted: true,
       dates: this.listDiaryDates(),
     };
+  }
+
+  getInstructions() {
+    const filePath = this.resolveInstructionsPath();
+    return {
+      markdown: readTextFile(filePath),
+      updatedAt: getFileModifiedAt(filePath),
+      filename: "weixin-instructions.md",
+    };
+  }
+
+  async updateInstructions(markdown) {
+    const filePath = this.resolveInstructionsPath();
+    const normalizedMarkdown = normalizeInstructions(markdown);
+    await atomicWriteText(filePath, `${normalizedMarkdown}\n`);
+    return this.getInstructions();
+  }
+
+  resolveInstructionsPath() {
+    const stateDir = path.resolve(this.config.stateDir);
+    const filePath = path.resolve(
+      this.config.weixinInstructionsFile || path.join(stateDir, "weixin-instructions.md")
+    );
+    const relative = path.relative(stateDir, filePath);
+    if (relative.startsWith("..") || path.isAbsolute(relative)) {
+      throw new DashboardInputError("Instruction file must stay inside the Cyberboss state directory.");
+    }
+    return filePath;
   }
 
   resolveDiaryPath(date) {
@@ -371,6 +400,17 @@ function normalizeDiaryMarkdown(value) {
   }
   if (markdown.length > 512 * 1024) {
     throw new DashboardInputError("Diary content is too large.");
+  }
+  return markdown;
+}
+
+function normalizeInstructions(value) {
+  const markdown = typeof value === "string" ? value.replace(/\r\n/g, "\n").trim() : "";
+  if (!markdown) {
+    throw new DashboardInputError("Instruction content cannot be empty.");
+  }
+  if (Buffer.byteLength(markdown, "utf8") > MAX_INSTRUCTIONS_LENGTH) {
+    throw new DashboardInputError("Instruction content is too large.");
   }
   return markdown;
 }

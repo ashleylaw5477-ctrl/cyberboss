@@ -22,6 +22,7 @@ test("dashboard server protects API routes and enforces CSRF on mutations", asyn
       notesDir: path.join(rootDir, "notes"),
       reminderQueueFile: path.join(rootDir, "reminder-queue.json"),
       checkinConfigFile: path.join(rootDir, "checkin-config.json"),
+      weixinInstructionsFile: path.join(rootDir, "weixin-instructions.md"),
       sessionsFile: path.join(rootDir, "sessions.json"),
       stickersDir: path.join(rootDir, "stickers"),
       stickerAssetsDir: path.join(rootDir, "stickers", "assets"),
@@ -37,6 +38,8 @@ test("dashboard server protects API routes and enforces CSRF on mutations", asyn
     dataService: {
       getOverview: () => ({ agent: { name: "Knox" } }),
       getDesk: async () => ({ latestNote: null, latestDiary: null, counts: { notes: 0, diaryDays: 0 } }),
+      getInstructions: () => ({ markdown: "# Test instructions", updatedAt: "", filename: "weixin-instructions.md" }),
+      updateInstructions: async (markdown) => ({ markdown, updatedAt: "", filename: "weixin-instructions.md" }),
       getNotes: async () => ({ items: [{ id: "note_test_abcdef123456", title: "Test" }], categories: [], tags: [] }),
       getNote: async (id) => ({ id, title: "Test", body: "Markdown" }),
       async saveStickerUpload(upload) {
@@ -83,6 +86,30 @@ test("dashboard server protects API routes and enforces CSRF on mutations", asyn
   const desk = await fetch(`${baseUrl}/api/desk`, { headers: { cookie } });
   assert.equal(desk.status, 200);
   assert.equal((await desk.json()).counts.notes, 0);
+
+  const instructions = await fetch(`${baseUrl}/api/instructions`, { headers: { cookie } });
+  assert.equal(instructions.status, 200);
+  assert.equal((await instructions.json()).markdown, "# Test instructions");
+
+  const rejectedInstructionsUpdate = await fetch(`${baseUrl}/api/instructions`, {
+    method: "PATCH",
+    headers: { cookie, origin: baseUrl, "content-type": "application/json" },
+    body: JSON.stringify({ markdown: "changed" }),
+  });
+  assert.equal(rejectedInstructionsUpdate.status, 403);
+
+  const instructionsUpdate = await fetch(`${baseUrl}/api/instructions`, {
+    method: "PATCH",
+    headers: {
+      cookie,
+      origin: baseUrl,
+      "content-type": "application/json",
+      "x-cyberboss-csrf": session.csrf,
+    },
+    body: JSON.stringify({ markdown: "changed" }),
+  });
+  assert.equal(instructionsUpdate.status, 200);
+  assert.equal((await instructionsUpdate.json()).markdown, "changed");
 
   const notes = await fetch(`${baseUrl}/api/notes`, { headers: { cookie } });
   assert.equal(notes.status, 200);
