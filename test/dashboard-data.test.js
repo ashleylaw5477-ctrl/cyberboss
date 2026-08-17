@@ -93,6 +93,24 @@ test("dashboard data merges persisted actions with existing diary and reminders"
   assert.equal(JSON.stringify(overview).includes("/data/workspace"), false);
 });
 
+test("dashboard data can update and delete a diary day safely", async (t) => {
+  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "cyberboss-dashboard-diary-mutate-"));
+  t.after(() => fs.rmSync(stateDir, { recursive: true, force: true }));
+  const config = createTestConfig(stateDir);
+  fs.mkdirSync(config.diaryDir, { recursive: true });
+  fs.writeFileSync(path.join(config.diaryDir, "2026-07-23.md"), "## 08:00 Old\n\nOld body", "utf8");
+
+  const service = new DashboardDataService({ config });
+  const updated = await service.updateDiary("2026-07-23", "## 09:00 New\n\nNew body");
+  assert.equal(updated.markdown, "## 09:00 New\n\nNew body\n");
+  assert.equal(service.getDiary("2026-07-23").entries[0].title, "New");
+
+  const deleted = await service.deleteDiary("2026-07-23");
+  assert.equal(deleted.deleted, true);
+  assert.equal(service.getDiary("2026-07-23").exists, false);
+  await assert.rejects(() => service.updateDiary("not-a-date", "body"), /YYYY-MM-DD/);
+});
+
 test("activity log ignores corrupt lines and returns newest entries first", (t) => {
   const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "cyberboss-activity-log-"));
   t.after(() => fs.rmSync(stateDir, { recursive: true, force: true }));

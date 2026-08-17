@@ -41,6 +41,10 @@ test("note service creates, lists, reads, and updates durable Markdown notes", a
 
   const reloaded = new NoteService({ config: { stateDir, notesDir } });
   assert.deepEqual(await reloaded.get({ id: created.id }), updated);
+
+  const deleted = await reloaded.delete({ id: created.id });
+  assert.equal(deleted.deleted, true);
+  await assert.rejects(() => reloaded.get({ id: created.id }), /Note not found/);
 });
 
 test("note service rejects unsafe ids and does not accept file paths", async (t) => {

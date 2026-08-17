@@ -1,9 +1,10 @@
 const fs = require("fs");
+const fsp = require("fs/promises");
 const path = require("path");
 
 const { resolveDefaultCheckinRange } = require("../core/checkin-config-store");
 const { ActivityLogService } = require("../services/activity-log-service");
-const { NoteService } = require("../services/note-service");
+const { NoteService, atomicWriteText } = require("../services/note-service");
 const {
   StickerService,
   loadStickerIndexSync,
@@ -135,6 +136,34 @@ class DashboardDataService {
     };
   }
 
+  async updateDiary(date, markdown) {
+    const selectedDate = normalizeDiaryDate(date);
+    const normalizedMarkdown = normalizeDiaryMarkdown(markdown);
+    const filePath = this.resolveDiaryPath(selectedDate);
+    await atomicWriteText(filePath, `${normalizedMarkdown}\n`);
+    return this.getDiary(selectedDate);
+  }
+
+  async deleteDiary(date) {
+    const selectedDate = normalizeDiaryDate(date);
+    const filePath = this.resolveDiaryPath(selectedDate);
+    await fsp.rm(filePath, { force: true });
+    return {
+      date: selectedDate,
+      deleted: true,
+      dates: this.listDiaryDates(),
+    };
+  }
+
+  resolveDiaryPath(date) {
+    const selectedDate = normalizeDiaryDate(date);
+    const filePath = path.resolve(this.config.diaryDir, `${selectedDate}.md`);
+    if (path.dirname(filePath) !== path.resolve(this.config.diaryDir)) {
+      throw new DashboardInputError("Diary path is outside the diary storage directory.");
+    }
+    return filePath;
+  }
+
   async getDesk() {
     const notes = await this.noteService.list();
     const latestDiaryDate = this.listDiaryDates()[0] || "";
@@ -165,6 +194,14 @@ class DashboardDataService {
 
   async getNote(id) {
     return this.noteService.get({ id });
+  }
+
+  async updateNote(id, input = {}) {
+    return this.noteService.update({ id, ...input });
+  }
+
+  async deleteNote(id) {
+    return this.noteService.delete({ id });
   }
 
   getActivities({ type = "", limit = 200 } = {}) {
@@ -292,6 +329,17 @@ class DashboardDataService {
     return this.getStickers().items.find((item) => item.stickerId === normalizedId) || null;
   }
 
+  async deleteSticker(stickerId) {
+    const normalizedId = normalizeText(stickerId).toLowerCase();
+    if (!STICKER_ID_PATTERN.test(normalizedId)) {
+      throw new DashboardInputError("Invalid sticker id.");
+    }
+    const result = await this.stickerService.delete({
+      items: [{ stickerId: normalizedId }],
+    });
+    return result.results?.[0] || null;
+  }
+
   async saveStickerUpload({ filePath, tags = [], desc = "" } = {}) {
     const result = await this.stickerService.saveFromInbox({
       items: [{ filePath, tags, desc }],
@@ -307,6 +355,25 @@ class DashboardDataService {
 }
 
 class DashboardInputError extends Error {}
+
+function normalizeDiaryDate(value) {
+  const date = normalizeText(value);
+  if (!DIARY_DATE_PATTERN.test(date)) {
+    throw new DashboardInputError("Diary date must use YYYY-MM-DD format.");
+  }
+  return date;
+}
+
+function normalizeDiaryMarkdown(value) {
+  const markdown = typeof value === "string" ? value.replace(/\r\n/g, "\n").trim() : "";
+  if (!markdown) {
+    throw new DashboardInputError("Diary content cannot be empty. Delete the day instead.");
+  }
+  if (markdown.length > 512 * 1024) {
+    throw new DashboardInputError("Diary content is too large.");
+  }
+  return markdown;
+}
 
 function parseDiaryEntries(date, markdown) {
   const normalized = String(markdown || "").replace(/\r\n/g, "\n");

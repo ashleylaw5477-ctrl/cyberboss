@@ -75,6 +75,21 @@ class NoteService {
     });
   }
 
+  async delete(input = {}) {
+    return this.enqueueWrite(async () => {
+      const id = normalizeId(input.id);
+      const index = await this.readIndex();
+      const itemIndex = index.items.findIndex((item) => item.id === id);
+      if (itemIndex < 0) {
+        throw new NoteNotFoundError(id);
+      }
+      const [deleted] = index.items.splice(itemIndex, 1);
+      await this.writeIndex(index);
+      await fsp.rm(this.resolveBodyPath(id), { force: true });
+      return { ...deleted, deleted: true };
+    });
+  }
+
   async list({ category = "", tag = "", query = "" } = {}) {
     const index = await this.readIndex();
     const normalizedCategory = normalizeText(category).toLocaleLowerCase();
